@@ -1,0 +1,3 @@
+Output class averages:: my_refined_classes.mrc
+Seed for input dump filenames for intermediate arrays:: dump_file_seed_.dat
+Number of dump files:: 1
