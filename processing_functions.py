@@ -1,11 +1,13 @@
+import glob
 import itertools
 from math import ceil
 import os
 import subprocess
 
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory):
+    print("=======================================")
     print("Combining Stacks of Particles from Warp")
-    print("==============================")
+    print("=======================================")
     os.chdir(warp_folder)
 
     p = subprocess.call(['/gne/home/baradb/relion/build/bin/relion_preprocess --operate_on {0} --operate_out {1}/{2}'.format(warp_star_filename, working_directory, stack_label)], shell=True) # Do not run shell=True outside of intranet!
@@ -13,11 +15,12 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     os.chdir(working_directory)
 
 
-def generate_new_classes(class_number=50, pixel_size=1.2007, low_res = 300, high_res = 40):
+def generate_new_classes(class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40):
+    print("====================")
     print("Preparing 2D Classes")
     print("====================")
     input = "\n".join([
-        "single_stacked.mrcs", # Input MRCS stack
+        input_stack, # Input MRCS stack
         "classes_0.par", # Input Par file
         os.devnull, # Input MRC classes
         os.devnull, # Output par file
@@ -48,21 +51,16 @@ def generate_new_classes(class_number=50, pixel_size=1.2007, low_res = 300, high
     out,_ = p.communicate(input=input.encode('utf-8'))
     print(out.decode('utf-8'))
 
-def refine_2d_subjob(process_number, round=0, particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32, append=False):
+def refine_2d_subjob(process_number, round=0, input_par_filename = "classes_0.par", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32):
     import time
     start_time = time.time()
     start = process_number*particles_per_process+1
     stop = (process_number+1)*particles_per_process
     if stop > particle_count:
         stop = particle_count
-    # print(start,stop)
-    if append:
-        append_str="_appended"
-    else:
-        append_str=""
     input = "\n".join([
-        "single_stacked.mrcs", # Input MRCS stack
-        "classes_{0}{1}.par".format(round, append_str), # Input Par file
+        input_stack, # Input MRCS stack
+        input_par_filename, # Input Par file
         "classes_{0}.mrc".format(round), # Input MRC classes
         "partial_classes_{0}_{1}.par".format(round+1, process_number), # Output par file
         "classes_{0}.mrc".format(round+1), # Output MRC class
@@ -110,6 +108,7 @@ def merge_par_files(cycle, process_count=32):
                         outfile.write(line)
             subprocess.Popen("/bin/rm partial_classes_{}_{}.par".format(cycle+1, process_number), shell=True)
     print("Finished writing classes_{}.par".format(cycle+1))
+    return "classes_{}.par".format(cycle+1)
 
 def merge_2d_subjob(cycle, process_count=32):
     input = "\n".join([
@@ -123,6 +122,7 @@ def merge_2d_subjob(cycle, process_count=32):
 
 def calculate_particle_statistics(filename, class_number=50, particles_per_class=300, process_count = 32):
     with open(filename) as f:
+        i=0
         for i,l in enumerate(f):
             pass
         particle_count = i+1
@@ -159,10 +159,10 @@ def find_previous_classes():
     if len(file_list) > 0:
         previous_classes_bool=True
         recent_class = sorted(file_list, key=lambda f: int(f.rsplit(os.path.extsep, 1)[0].rsplit("_")[1]))[-1]
-        cycle_number = int(f.rsplit(os.path.extsep, 1)[0].rsplit("_")[1])
+        cycle_number = int(recent_class.rsplit(os.path.extsep, 1)[0].rsplit("_")[1])
     else:
-        previous_classes = False
-        recent_class = ""
+        previous_classes_bool = False
+        recent_class = "classes_0.par"
         cycle_number = 0
     return previous_classes_bool, recent_class, cycle_number
 
@@ -175,11 +175,10 @@ def generate_par_file(stack_label, pixel_size=1.0, previous_classes_bool=False, 
         par_label = "temp.par"
         p = subprocess.Popen("/gne/home/baradb/star_to_frealign.com", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
         out, _ = p.communicate(input="{0}.star\n{1}\n{2}".format(stack_label, par_label, pixel_size).encode('utf-8'))
-        total_particles = append_new_particles(old_particles=recent_job, new_particles=par_label, output_filename = new_par_file)
+        total_particles = append_new_particles(old_particles=recent_class, new_particles=par_label, output_filename = new_par_file)
         subprocess.Popen("/bin/rm {}".format(par_label), shell=True)
         print(out.decode('utf-8'))
 
-        print("Time to produce the par file: {0:.2f} s".format(times[-1]-times[-2]))
     else:
         print("No previous classes were found. A new par file will be generated at classes_0.par")
         new_par_file = "classes_0.par"
