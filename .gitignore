@@ -7,3 +7,8 @@
 *.par
 *.star
 *.dff
+
+
+
+# Python Files
+*.pyc
