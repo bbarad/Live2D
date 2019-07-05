@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>Live 2D Classification</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Live 2D Classification on Krios-1</h1>
+      <div class="row">
+        <div class="col-sm-8 order-sm-last">
+          <h2>Views</h2>
+        </div>
+        <div class="col-sm-4 order-sm-first">
+          <form class="form">
+            <div class="btn-toolbar" role="toolbar">
+              <div class="btn-group mr-2">
+                <button type="submit" class="btn btn-primary" id="submit-settings">Update Settings</button>
+              </div>
+              <div class="btn-group mr-2">
+                <button type="button" class="btn btn-success" id="start-job">Start Job</button>
+                <button type="button" class="btn btn-danger" id="stop-job" disabled>Stop Job </button>
+              </div>
+            </div>
+            <hr>
+            <div id="accordion">
+              <div class=card">
+                <div id="user-settings">
+                  <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseOne">User Settings </button></h3>
+                </div>
+                <div id="collapseOne" class="collapse show" aria-labelledby="user-settings">
+                  <div class="form-group">
+                    <label for="warp-directory">Warp Directory </label>
+                    <input type="text" class="form-control" id="warp-directory" placeholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory">
+                  </div>
+                  <div class="form-group form-group-inline">
+                    <label for="pixel-size">Pixel Size: </label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="pixel-size" placeholder="1.2007" aria-label="pixel-size">
+                      <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
+                    </div>
+                  </div>
+                  <div class="form-group form-group-inline">
+                    <label for="low-res">Low Resolution Limit: </label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="low-res" placeholder="300" aria-label="low-res">
+                      <div class="input-group-append"><span class="input-group-text" id=low-res-unit>Å</span></div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="form-group form-group-inline">
+                        <label for="high-res-initial">Initial High Resolution Limit: </label>
+                        <div class="input-group mr-2">
+                          <input type="text" class="form-control" id="high-res-initial" placeholder="40" aria-label="high-res-initial">
+                          <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="form-group form-group-inline">
+                        <label for="pixel-size">Final High Resolution Limit: </label>
+                        <div class="input-group mr-2">
+                          <input type="text" class="form-control" id="high-res-final" placeholder="8" aria-label="high-res-final">
+                          <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <label for="classification-type">Classification Type </label>
+                  <div class="form-group btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-secondary active">
+                      <input type="radio" name="classification-type" id="abinit" value="abinit" checked> Ab Initio </input>
+                    </label>
+                    <label class="btn btn-secondary">
+                      <input type="radio" name="classification-type" id="seeded" value="seeded"> Seeded Startup </input>
+                    </label>
+                    <label class="btn btn-secondary">
+                      <input type="radio" name="classification-type" id="refine" value="refine"> Refinement </input>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <hr>
+            <div class=card">
+              <div id="scope-settings">
+                <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseTwo">Microscope Settings </button></h3>
+              </div>
+              <div id="collapseTwo" class="collapse" aria-labelledby="scope-settings">
+                <div class="form-group form-group-inline">
+                  <label for="scope-kev">Microscope Energy: </label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="scope-kev" placeholder="300" aria-label="scope-kev">
+                    <div class="input-group-append"><span class="input-group-text" id=scope-kev-unit>keV</span></div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="scope-cs">Spherical Aberration: </label>
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="scope-cs" placeholder="2.7" aria-label="scope-kev">
+                    <div class="input-group-append"><span class="input-group-text" id=scope-cs-unit>mm</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <hr>
+          </form>
+
+
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
