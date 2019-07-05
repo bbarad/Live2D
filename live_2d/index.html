@@ -12,25 +12,26 @@
   </head>
   <body>
     <div class="container">
-      <h1>Live 2D Classification on Krios-1</h1>
+      <div class="text-center"><h1>Live 2D Classification on Krios-1</h1></div>
+      <hr>
       <div class="row">
-        <div class="col-sm-8 order-sm-last">
+        <div class="col-md-6 col-lg-8 order-md-last">
           <h2>Views</h2>
         </div>
-        <div class="col-sm-4 order-sm-first">
-          <form class="form">
+        <div class="col-md-6 col-lg-4 order-md-first">
+          <form class="form" method="post" id="options-form">
             <div class="btn-toolbar" role="toolbar">
-              <div class="btn-group mr-2">
+              <div class="btn-group mr-2 mb-2">
                 <button type="submit" class="btn btn-primary" id="submit-settings">Update Settings</button>
               </div>
-              <div class="btn-group mr-2">
+              <div class="btn-group mr-2 mb-2">
                 <button type="button" class="btn btn-success" id="start-job">Start Job</button>
                 <button type="button" class="btn btn-danger" id="stop-job" disabled>Stop Job </button>
               </div>
             </div>
             <hr>
             <div id="accordion">
-              <div class=card">
+              <div>
                 <div id="user-settings">
                   <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseOne">User Settings </button></h3>
                 </div>
@@ -39,33 +40,39 @@
                     <label for="warp-directory">Warp Directory </label>
                     <input type="text" class="form-control" id="warp-directory" placeholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory">
                   </div>
-                  <div class="form-group form-group-inline">
-                    <label for="pixel-size">Pixel Size: </label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" id="pixel-size" placeholder="1.2007" aria-label="pixel-size">
-                      <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
+                  <div class="row">
+                    <div class="col-lg">
+                      <div class="form-group form-group-inline">
+                        <label for="pixel-size">Pixel Size: </label>
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="pixel-size" placeholder="1.2007" aria-label="pixel-size">
+                          <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div class="form-group form-group-inline">
-                    <label for="low-res">Low Resolution Limit: </label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" id="low-res" placeholder="300" aria-label="low-res">
-                      <div class="input-group-append"><span class="input-group-text" id=low-res-unit>Å</span></div>
+                    <div class="col-lg">
+                      <div class="form-group form-group-inline">
+                        <label for="low-res">Mask Radius: </label>
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="mask-radius" placeholder="150" aria-label="mask-radius">
+                          <div class="input-group-append"><span class="input-group-text" id=mask-radius-unit>Å</span></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div class="row">
-                    <div class="col">
+                    <div class="col-lg">
                       <div class="form-group form-group-inline">
-                        <label for="high-res-initial">Initial High Resolution Limit: </label>
+                        <label for="high-res-initial">Initial High Res Limit: </label>
                         <div class="input-group mr-2">
                           <input type="text" class="form-control" id="high-res-initial" placeholder="40" aria-label="high-res-initial">
                           <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
                         </div>
                       </div>
                     </div>
-                    <div class="row">
+                    <div class="col-lg">
                       <div class="form-group form-group-inline">
-                        <label for="pixel-size">Final High Resolution Limit: </label>
+                        <label for="pixel-size">Final High Res Limit: </label>
                         <div class="input-group mr-2">
                           <input type="text" class="form-control" id="high-res-final" placeholder="8" aria-label="high-res-final">
                           <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
@@ -73,23 +80,65 @@
                       </div>
                     </div>
                   </div>
-                  <label for="classification-type">Classification Type </label>
-                  <div class="form-group btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-secondary active">
-                      <input type="radio" name="classification-type" id="abinit" value="abinit" checked> Ab Initio </input>
-                    </label>
-                    <label class="btn btn-secondary">
-                      <input type="radio" name="classification-type" id="seeded" value="seeded"> Seeded Startup </input>
-                    </label>
-                    <label class="btn btn-secondary">
-                      <input type="radio" name="classification-type" id="refine" value="refine"> Refinement </input>
-                    </label>
+                  <div class="row">
+                    <div class="col-lg">
+                      <div class="form-group">
+                        <label for="start-count">Particle Count Before Starting: </label>
+                        <div class="input-group mr-2">
+                          <input type="text" class="form-control" id="start-count" placeholder="50000" aria-label="start-count">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-lg">
+                      <div class="form-group form-group-inline">
+                        <label for="update-count">New Particle Count Before Update: </label>
+                        <div class="input-group mr-2">
+                          <input type="text" class="form-control" id="update-count" placeholder="50000" aria-label="update-count">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-lg">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="automask" disabled>
+                        <label class="form-check-label" for="autocenter">
+                          Automask
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-lg">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="autocenter" disabled>
+                        <label class="form-check-label" for="autocenter">
+                          Autocenter
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <label for="classification-type">Classification Type </label>
+                      <div class="form-group btn-group btn-group-toggle" data-toggle="buttons">
+                        <label class="btn btn-info active" tabindex="0" rel="popover" data-trigger="hover" data-placement="top" Title="Ab Initio Classification" data-content="Ab initio refinement will generate new random classes and begin classification of a subset of particles starting at the initial high res limit.">
+                          <input type="radio" name="classification-type" id="abinit" value="abinit" checked> Ab Initio </input>
+                        </label>
+                        <label class="btn btn-info" tabindex="0" rel="popover" data-trigger="hover" Title="Seeded Startup Classification" data-placement="top" data-content="Seeded startup will do a full classification starting from the initial high res limit using a subset of particles, but will begin with the most recently generated classes.">
+                          <input type="radio" name="classification-type" id="seeded" value="seeded">
+                            Seeded Startup
+                          </input>
+                        </label>
+                        <label class="btn btn-info" tabindex="0" rel="popover" data-trigger="hover" data-placement="top" Title="High Resolution Refinement" data-content="Refinement will take existing classes and iteratively classify all particles at the final hi res limit. High chance of not escaping local minima. Use this only when your starting classes are very good!">
+                          <input type="radio" name="classification-type" id="refine" value="refine"> Refinement </input>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
             <hr>
-            <div class=card">
+            <div>
               <div id="scope-settings">
                 <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseTwo">Microscope Settings </button></h3>
               </div>
@@ -125,5 +174,6 @@
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="{{ static_url('webapp.js') }}"></script>
   </body>
 </html>
