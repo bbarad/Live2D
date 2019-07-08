@@ -1,0 +1,11 @@
+.mrc-gallery {
+  background-color: #eee;
+  max-height: 50vh;
+}
+
+.terminal {
+  background-color: #eee;
+  overflow: auto;
+  max-height: 50vh;
+  white-space: pre-wrap;
+}
