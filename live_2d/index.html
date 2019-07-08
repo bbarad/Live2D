@@ -7,26 +7,93 @@
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ static_url('custom.css') }}">
 
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="57x57" href="{{ static_url('favicon/apple-icon-57x57.png') }}">
+    <link rel="apple-touch-icon" sizes="60x60" href="{{static_url('favicon/apple-icon-60x60.png')}}">
+    <link rel="apple-touch-icon" sizes="72x72" href="{{static_url('favicon/apple-icon-72x72.png')}}">
+    <link rel="apple-touch-icon" sizes="76x76" href="{{static_url('favicon/apple-icon-76x76.png')}}">
+    <link rel="apple-touch-icon" sizes="114x114" href="{{static_url('favicon/apple-icon-114x114.png')}}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{static_url('favicon/apple-icon-120x120.png')}}">
+    <link rel="apple-touch-icon" sizes="144x144" href="{{static_url('favicon/apple-icon-144x144.png')}}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{static_url('favicon/apple-icon-152x152.png')}}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{static_url('favicon/apple-icon-180x180.png')}}">
+    <link rel="icon" type="image/png" sizes="192x192"  href="{{static_url('favicon/android-icon-192x192.png')}}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{static_url('favicon/favicon-32x32.png')}}">
+    <link rel="icon" type="image/png" sizes="96x96" href="{{static_url('favicon/favicon-96x96.png')}}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{static_url('favicon/favicon-16x16.png')}}">
+    <link rel="manifest" href="{{static_url('favicon/manifest.json')}}">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="{{static_url('favicon/ms-icon-144x144.png')}}">
+    <meta name="theme-color" content="#ffffff">
     <title>Live 2D Classification</title>
   </head>
   <body>
     <div class="container">
       <div class="text-center"><h1>Live 2D Classification on Krios-1</h1></div>
+      <h2 class="text-center">Job Status: Stopped</h2>
       <hr>
       <div class="row">
-        <div class="col-md-6 col-lg-8 order-md-last">
-          <h2>Views</h2>
+        <div class="col-md-7 col-xl-8 order-md-last">
+          <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="class-gallery"> Classes </h3>
+          <!-- MRC GALLERY IMPLEMENTATION HERE -->
+          <div class="mrc-gallery collapse show" id="class-gallery">
+          </div>
+          <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#console"> Job Output </button>
+          <div id="console" class="terminal collapse">
+            C Refine2D run date and time:              2019-07-03 09:49:01
+            C Input particle images:                   combined_stack.mrcs
+            C Input Frealign parameter filename:       classes_30.par
+            C Input class averages:                    classes_30.mrc
+            C Output parameter file:                   partial_classes_31_0.par
+            C Output class averages:                   classes_31.mrc
+            C First particle to refine:                1
+            C Last particle to refine:                 1673
+            C Percent of particles to use:             0.280000
+            C Pixel size of images (A):                1.200700
+            C Beam energy (keV):                       300.000000
+            C Spherical aberration (mm):               2.700000
+            C Amplitude contrast:                      0.070000
+            C Mask radius for refinement (A):          150.000000
+            C Low resolution limit (A):                300.000000
+            C High resolution limit (A):               11.555555
+            C Angular step:                            15.000000
+            C Search range in X (A):                   49.500000
+            C Search range in Y (A):                   49.500000
+            C Smoothing factor:                        1.000000
+            C Padding factor:                          2
+            C Normalize particles:                     Yes
+            C Invert particle contrast:                Yes
+            C Exclude images with blank edges:         No
+            C Dump intermediate arrays:                Yes
+            C Output dump filename:                    dump_file_1.dat
+            C
+            C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      DF2  ANGAST  PSHIFT     OCC      LogP      SIGMA   SCORE  CHANGE
+                  1  316.70    0.00    0.00    -18.49     13.13   10000   -17   8933.8   8640.4   31.00    0.00  100.00     -7667    56.6754   90.88    0.00
+                  2  209.10    0.00    0.00      4.12     -8.02   10000   -17   8934.5   8641.0   31.00    0.00  100.00    -13634    32.9073   55.71    0.00
+                  3  226.70    0.00    0.00      8.40    -34.85   10000   -17   8939.5   8646.0   31.00    0.00  100.00     -7397    55.4384  101.27    0.00
+                  4  362.41    0.00    0.00     -6.66     20.31   10000   -17   8928.7   8635.2   31.00    0.00  100.00    -12317    30.4717   44.20    0.00
+                  5   48.26    0.00    0.00     -5.05     35.72   10000   -17   8949.4   8655.9   31.00    0.00  100.00     -5734    64.1573  135.43    0.00
+                  6  302.68    0.00    0.00     10.80     16.84   10000   -17   8940.1   8646.7   31.00    0.00  100.00     -1157    49.9121  143.70    0.00
+                  7  147.95    0.00    0.00     -4.60      1.06   10000    17   8948.7   8655.2   31.00    0.00  100.00    -10457    45.4284   69.99  -91.82
+                  8  108.26    0.00    0.00     30.03     11.16   10000   -17   8929.6   8636.2   31.00    0.00  100.00     -6657    70.2589   77.91    0.00
+                  9  330.66    0.00    0.00    -98.08     82.61   10000   -36   8913.9   8620.4   31.00    0.00  100.00     -3902    62.9924   47.69    0.00
+                 10  347.41    0.00    0.00    -14.96     32.54   10000   -17   8915.5   8622.0   31.00    0.00  100.00    -15615    36.2638   50.23    0.00
+          </div>
+          <!-- STREAMING STDOUT TO A "TERMINAL" HERE -->
+          <hr>
         </div>
-        <div class="col-md-6 col-lg-4 order-md-first">
-          <form class="form" method="post" id="options-form">
+        <!-- Options Pane -->
+        <div class="col-md-5 col-xl-4 order-md-first">
+          <form class="form" id="options-form">
             <div class="btn-toolbar" role="toolbar">
               <div class="btn-group mr-2 mb-2">
                 <button type="submit" class="btn btn-primary" id="submit-settings">Update Settings</button>
               </div>
               <div class="btn-group mr-2 mb-2">
                 <button type="button" class="btn btn-success" id="start-job">Start Job</button>
-                <button type="button" class="btn btn-danger" id="stop-job" disabled>Stop Job </button>
+                <button type="button" class="btn btn-danger" id="stop-job" disabled>Stop Job</button>
               </div>
             </div>
             <hr>
@@ -94,6 +161,24 @@
                         <label for="update-count">New Particle Count Before Update: </label>
                         <div class="input-group mr-2">
                           <input type="text" class="form-control" id="update-count" placeholder="50000" aria-label="update-count">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-lg">
+                      <div class="form-group">
+                        <label for="number-classes">Number of Classes: </label>
+                        <div class="input-group mr-2">
+                          <input type="text" class="form-control" id="number-classes" placeholder="50" aria-label="number-classes" disabled>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-lg">
+                      <div class="form-group form-group-inline">
+                        <label for="number-per-class">Target Number of Particles Per Class: </label>
+                        <div class="input-group mr-2">
+                          <input type="text" class="form-control" id="number-per-class" placeholder="300" aria-label="number-per-class" disabled>
                         </div>
                       </div>
                     </div>
