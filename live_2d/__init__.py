@@ -9,6 +9,8 @@ define('port', default=8181, help='port to listen on')
 
 settings = {
     "static_path": os.path.join(os.path.dirname(__file__), "static"),
+    "static_url_prefix": "/static/",
+    "autoreload":"True",
 }
 
 class IndexHandler(RequestHandler):
