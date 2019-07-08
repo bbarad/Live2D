@@ -1,0 +1,8 @@
+mrcfile==1.1.2 # BSD
+multiprocess==0.70.8 # BSD
+numpy==1.16.2 # BSD
+pandas==0.24.2 # BSD
+-e git+https://github.com/bbarad/pyem.git@58fc29e7b27a55d46ac78357b246f37819bfb3ee#egg=pyem # GPL
+scipy==1.2.1 # BSD
+terminado==0.8.1 # BSD
+tornado==6.0.2 # Apache 2.0
