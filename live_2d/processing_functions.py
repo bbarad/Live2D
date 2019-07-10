@@ -2,17 +2,148 @@ import glob
 import itertools
 from math import ceil
 import os
+import shutil
 import subprocess
+import time
+
+import mrcfile
+import numpy as np
+import pandas
+from pyem import star
+
+def isheader(string):
+    if string.startswith("_".encode("utf-8")):
+        print(string)
+        return True
+    if string.startswith("#".encode("utf-8")):
+        print(string)
+        return True
+    if string.startswith("data_".encode("utf-8")):
+        print(string)
+        return True
+    if string.startswith("loop_".encode("utf-8")):
+        print(string)
+        return True
+    if string.isspace():
+        print(string)
+        return True
+    return False
 
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory):
+    """Function to generate new image stacks based only on the results of the first stack. Also, while I am doing it, I will write out a base star file to use for appending and/or regenerating for further class files.
+
+    I am doing everything using a memory mapped mrc file. This does not allow easy appending, so I am writing directly to the memory map once it is created as a numpy mmap, then I am reloading as an mrcfile mmap and fixing the header."""
     print("=======================================")
     print("Combining Stacks of Particles from Warp")
     print("=======================================")
+    start_time = time.time()
+    combined_filename = "{}/{}.mrcs".format(working_directory, stack_label)
+    previous_file = os.path.isfile(combined_filename)
     os.chdir(warp_folder)
+    total_particles = star.parse_star(warp_star_filename)
+    print(len(total_particles))
+    stacks_filenames = total_particles["rlnImageName"].str.rsplit("@").str.get(-1)
 
-    p = subprocess.call(['/gne/home/baradb/relion/build/bin/relion_preprocess --operate_on {0} --operate_out {1}/{2}'.format(warp_star_filename, working_directory, stack_label)], shell=True) # Do not run shell=True outside of intranet!
+    # MAKE PRELIMINARY STACK IF ITS NOT THERE
+    if not previous_file:
+        print("Copying first mrcs file to generate seed for combined stack")
+        shutil.copy(stacks_filenames[0], combined_filename)
+
+    # GET INFO ABOUT STACKS
+    with mrcfile.mmap(combined_filename, "r", permissive=True) as mrcs:
+        prev_par = int(mrcs.header.nz)
+        print("Previous Particles: {}".format(prev_par))
+        new_particles_count = len(total_particles) - prev_par
+        print("Total Particles to Import: {}".format(new_particles_count))
+        offset = mrcs.data.base.size()
+        # print("Bytes Offset: {}".format(offset))
+        data_dtype = mrcs.data.dtype
+        # print("dtype: {}".format(data_dtype))
+        # print("dtype size: {}".format(data_dtype.itemsize))
+        shape=(new_particles_count, mrcs.header.ny, mrcs.header.nx)
+
+    # OPEN THE MEMMAP AND ITERATIVELY ADD NEW PARTICLES
+    mrcfile_raw = np.memmap(combined_filename, dtype=data_dtype, offset=offset, shape=shape, mode="r+")
+    new_offset=0
+    new_filenames = stacks_filenames[prev_par:].unique()
+    for index, filename in enumerate(new_filenames):
+        with mrcfile.mmap(filename, "r", permissive=True) as partial_mrcs:
+            x = partial_mrcs.header.nx
+            y = partial_mrcs.header.ny
+            z = partial_mrcs.header.nz
+            print("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+            mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
+            new_offset = new_offset+z
+    mrcfile_raw.flush()
+    del mrcfile_raw
+    # FIX THE HEADER
+    with mrcfile.mmap(combined_filename, "r+", permissive=True) as mrcs:
+        mrcs.header.nz = mrcs.header.mz = len(total_particles)
 
     os.chdir(working_directory)
+    #WRITE OUT STAR FILE
+    with open("{}/{}.star".format(working_directory,stack_label),"w") as file:
+        file.write("\0\ndata_\n\0\nloop_\n")
+        input = ["{} #{}".format(value, index+1) for index,value in enumerate([
+        "_cisTEMPositionInStack",
+        "_cisTEMAnglePsi",
+        "_cisTEMAngleTheta",
+        "_cisTEMAnglePhi",
+        "_cisTEMXShift",
+        "_cisTEMYShift",
+        "_cisTEMDefocus1",
+        "_cisTEMDefocus2",
+        "_cisTEMDefocusAngle",
+        "_cisTEMPhaseShift",
+        "_cisTEMImageActivity",
+        "_cisTEMOccupancy",
+        "_cisTEMLogP",
+        "_cisTEMSigma",
+        "_cisTEMScore",
+        "_cisTEMScoreChange",
+        "_cisTEMPixelSize",
+        "_cisTEMMicroscopeVoltagekV",
+        "_cisTEMMicroscopeCsMM",
+        "_cisTEMAmplitudeContrast",
+        "_cisTEMBeamTiltX",
+        "_cisTEMBeamTiltY",
+        "_cisTEMImageShiftX",
+        "_cisTEMImageShiftY",
+        ])]
+        file.write("\n".join(input))
+        file.write("\n")
+        for row in total_particles.itertuples(index=True):
+            row_data = [
+            str(row.Index+1),
+            "0.00",
+            "0.00",
+            "0.00",
+            "-0.00",
+            "-0.00",
+            str(row.rlnDefocusU),
+            str(row.rlnDefocusV),
+            str(row.rlnDefocusAngle),
+            "0.0",
+            "0",
+            "100.0",
+            "-500",
+            "1.0",
+            "20.0",
+            "0.0",
+            "{:.4f}".format(row.rlnDetectorPixelSize),
+            str(row.rlnVoltage),
+            str(row.rlnSphericalAberration),
+            str(row.rlnAmplitudeContrast),
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            ]
+            file.write("\t".join(row_data))
+            file.write("\n")
+
+    end_time = time.time()
+    print("Total Time: {}s".format(end_time - start_time))
 
 
 def generate_new_classes(class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40):
@@ -21,37 +152,38 @@ def generate_new_classes(class_number=50, input_stack="combined_stack.mrcs", pix
     print("====================")
     input = "\n".join([
         input_stack, # Input MRCS stack
-        "classes_0.par", # Input Par file
+        "classes_0.star", # Input Star file
         os.devnull, # Input MRC classes
-        os.devnull, # Output par file
+        os.devnull, # Output star file
         "classes_0.mrc", # Output MRC class
         str(class_number), # number of classes to generate for the first time - only use when starting a NEW classification
         "1", # First particle in stack to use
         "0", # Last particle in stack to use - 0 is the final.
         "1", # Fraction of particles to classify
         str(pixel_size), # Pixel Size
-        "300", # keV
-        "2.7", # Cs
-        "0.07", # Amplitude Contrast
+        # "300", # keV
+        # "2.7", # Cs
+        # "0.07", # Amplitude Contrast
         "150", # Mask Radius in Angstroms
         str(low_res), # Low Resolution Limit
         str(high_res), # High Resolution Limit
-        "0", #
-        "0",
-        "0",
-        "1",
-        "2",
+        "0", #Angular Search
+        "0", # XY search
+        "1", # Tuning
+        "2", # Tuning
         "Yes", # Normalize?
         "Yes", # INVERT?
-        "No",
-        "No",
-        "No.dat"
+        "No", #Exclude blank edges
+        "Yes", #Automask
+        "Yes", # Autocenter
+        "No", # Dump Dats
+        "No.dat" # Datfilename
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r796_dbg/bin/refine2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/baradb/software/cisTEM2/r_dbg/bin/refine2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     print(out.decode('utf-8'))
 
-def refine_2d_subjob(process_number, round=0, input_par_filename = "classes_0.par", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32):
+def refine_2d_subjob(process_number, round=0, input_star_filename = "classes_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32):
     import time
     start_time = time.time()
     start = process_number*particles_per_process+1
@@ -60,55 +192,57 @@ def refine_2d_subjob(process_number, round=0, input_par_filename = "classes_0.pa
         stop = particle_count
     input = "\n".join([
         input_stack, # Input MRCS stack
-        input_par_filename, # Input Par file
+        input_star_filename, # Input Star file
         "classes_{0}.mrc".format(round), # Input MRC classes
-        "partial_classes_{0}_{1}.par".format(round+1, process_number), # Output par file
-        "classes_{0}.mrc".format(round+1), # Output MRC class
+        "partial_classes_{0}_{1}.star".format(round+1, process_number), # Output Star file
+        "classes_{0}.mrc".format(round+1), # Output MRC classes
         "0", # number of classes to generate for the first time - only use when starting a NEW classification
         str(start), # First particle in stack to use
         str(stop), # Last particle in stack to use - 0 is the final.
         "{0:.2}".format(class_fraction), # Fraction of particles to classify
         str(pixel_size), # Pixel Size
-        "300", # keV
-        "2.7", # Cs
-        "0.07", # Amplitude Contrast
+        # "300", # keV
+        # "2.7", # Cs
+        # "0.07", # Amplitude Contrast
         "150", # Mask Radius in Angstroms
         str(low_res_limit), # Low Resolution Limit
         str(high_res_limit), # High Resolution Limit
-        "{0}".format(angular_search_step), #
-        "{0}".format(max_search_range),
-        "{0}".format(max_search_range),
-        "1",
-        "2",
-        "Yes",
-        "Yes",
-        "No",
-        "Yes",
+        "{0}".format(angular_search_step), #Angular Search
+        "{0}".format(max_search_range), #XY Search
+        "1", #Tuning
+        "2", # Tuning
+        "Yes", #Normalize
+        "Yes", #invert
+        "No", # Exclude blank edges
+        "Yes", #Automask
+        "Yes", #Autocenter
+        "Yes", #Dump Dat
         "dump_file_{0}.dat".format(process_number+1)
     ])
     # if process_number=0:
     #     print(input)
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r796_dbg/bin/refine2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/baradb/software/cisTEM2/r_dbg/bin/refine2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     end_time = time.time()
     time = end_time - start_time
     print("Successful return of process number {0} out of {1} in time {2:0.1f} seconds".format(process_number+1, process_count, time))
     return(out)
 
-def merge_par_files(cycle, process_count=32):
-    filename = "classes_{}.par".format(cycle+1)
+def merge_star_files(cycle, process_count=32):
+    filename = "classes_{}.star".format(cycle+1)
     with open(filename, 'wb') as outfile:
         for process_number in range(process_count):
-            with open("partial_classes_{}_{}.par".format(cycle+1, process_number), 'rb') as infile:
+            with open("partial_classes_{}_{}.star".format(cycle+1, process_number), 'rb') as infile:
                 if process_number == 0:
-                    for line in itertools.islice(infile, 0, None):
+                    for line in infile:
                         outfile.write(line)
                 else:
-                    for line in itertools.islice(infile, 28, None):
-                        outfile.write(line)
-            subprocess.Popen("/bin/rm partial_classes_{}_{}.par".format(cycle+1, process_number), shell=True)
-    print("Finished writing classes_{}.par".format(cycle+1))
-    return "classes_{}.par".format(cycle+1)
+                    for line in infile:
+                        if not isheader(line):
+                            outfile.write(line)
+            subprocess.Popen("/bin/rm partial_classes_{}_{}.star".format(cycle+1, process_number), shell=True)
+    print("Finished writing classes_{}.star".format(cycle+1))
+    return "classes_{}.star".format(cycle+1)
 
 def merge_2d_subjob(cycle, process_count=32):
     input = "\n".join([
@@ -116,9 +250,12 @@ def merge_2d_subjob(cycle, process_count=32):
         "dump_file_.dat",
         str(process_count)
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r796_dbg/bin/merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/baradb/software/cisTEM2/r_dbg/bin/merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     print(out.decode('utf-8'))
+    for i in range(process_count):
+        p = subprocess.Popen("/bin/rm dump_file_{}.dat".format(i+1), shell=True)
+
 
 def calculate_particle_statistics(filename, class_number=50, particles_per_class=300, process_count = 32):
     with open(filename) as f:
@@ -129,7 +266,7 @@ def calculate_particle_statistics(filename, class_number=50, particles_per_class
 
     particles_per_process = int(ceil(particle_count / process_count))
 
-    class_fraction = 300.0 * class_number / particle_count
+    class_fraction = particles_per_class * class_number / particle_count
 
     if class_fraction > 1:
         class_fraction = 1.0
@@ -141,51 +278,52 @@ def append_new_particles(old_particles, new_particles, output_filename):
         with open(old_particles) as f:
             for i,l in enumerate(f):
                 append_file.write(l)
-                if l.startswith("C"):
+                if isheader(l):
                     old_header_length += 1
-                pass
         old_particle_count = i+1-old_header_length
         new_particles_count = 0
         print(old_particle_count)
+        new_header_length = 0
         with open(new_particles) as f2:
-            for l in itertools.islice(f2, old_particle_count, None):
-                append_file.write(l)
-                new_particles_count += 1
+            for i,l in enumerate(f2):
+                if isheader(l):
+                    new_header_length +=1
+                    continue
+                if i == new_header_length + old_particle_count:
+                    print(i)
+                if i > new_header_length + old_particle_count:
+                    append_file.write(l)
+                    new_particles_count += 1
         print(new_particles_count)
     return new_particles_count+old_particle_count
 
 def find_previous_classes():
-    file_list = glob.glob("classes_*.par")
+    file_list = glob.glob("classes_*.star")
     if len(file_list) > 0:
         previous_classes_bool=True
         recent_class = sorted(file_list, key=lambda f: int(f.rsplit(os.path.extsep, 1)[0].rsplit("_")[1]))[-1]
         cycle_number = int(recent_class.rsplit(os.path.extsep, 1)[0].rsplit("_")[1])
     else:
         previous_classes_bool = False
-        recent_class = "classes_0.par"
+        recent_class = "classes_0.star"
         cycle_number = 0
     return previous_classes_bool, recent_class, cycle_number
 
 
-def generate_par_file(stack_label, pixel_size=1.0, previous_classes_bool=False, recent_class = "classes_0.par"):
+def generate_star_file(stack_label, previous_classes_bool=False, recent_class = "classes_0.star"):
+    """Wrapper logic to either append particles or generate a whole new class.
+    Uses find_previous_classes and append_new_particles and import_new_particles to do all the heavy lifting."""
+    star_file = "{}.star".format(stack_label)
     if previous_classes_bool:
         print("It looks like previous jobs have been run in this directory. The most recent output class is: {}".format(recent_class))
-        new_par_file = os.path.splitext(recent_class)[0]+"_appended.par"
-        print("Instead of classes_0.par, the new particles will be appended to the end of that par file and saved as {}".format(new_par_file))
-        par_label = "temp.par"
-        p = subprocess.Popen("/gne/home/baradb/star_to_frealign.com", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-        out, _ = p.communicate(input="{0}.star\n{1}\n{2}".format(stack_label, par_label, pixel_size).encode('utf-8'))
-        total_particles = append_new_particles(old_particles=recent_class, new_particles=par_label, output_filename = new_par_file)
-        subprocess.Popen("/bin/rm {}".format(par_label), shell=True)
-        print(out.decode('utf-8'))
-
+        new_star_file = os.path.splitext(recent_class)[0]+"_appended.star"
+        print("Instead of classes_0.star, the new particles will be appended to the end of that par file and saved as {}".format(new_star_file))
+        total_particles = append_new_particles(old_particles=recent_class, new_particles=star_file, output_filename = new_star_file)
     else:
-        print("No previous classes were found. A new par file will be generated at classes_0.par")
-        new_par_file = "classes_0.par"
-        p = subprocess.Popen("/gne/home/baradb/star_to_frealign.com", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-        out, _ = p.communicate(input="{0}.star\n{1}\n{2}".format(stack_label, new_par_file, pixel_size).encode('utf-8'))
-
-    return new_par_file
+        print("No previous classes were found. A new par file will be generated at classes_0.star")
+        new_star_file = "classes_0.star"
+        shutil.copy(star_file, new_star_file)
+    return new_star_file
 
 
 
@@ -193,3 +331,9 @@ def generate_par_file(stack_label, pixel_size=1.0, previous_classes_bool=False, 
 
 if __name__=="__main__":
     print("This is a function library and should not be called directly.")
+    print("Testing particle import with streaming")
+    stack_label="streaming_combine"
+    warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
+    warp_star_filename = "allparticles_GenentechNet2Mask_20190627.star"
+    working_directory = "/gne/scratch/u/baradb/outputdata"
+    import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory)
