@@ -1,3 +1,5 @@
+
+
 .mrc-gallery {
   background-color: #eee;
   max-height: 50vh;
@@ -8,4 +10,18 @@
   overflow: auto;
   max-height: 50vh;
   white-space: pre-wrap;
+}
+
+@media (min-width: 768px) {
+
+body, html {
+  margin: 0;
+  overflow: hidden;
+  height:100%;
+}
+
+#left, #right {
+  max-height:80vh;
+  overflow-y: scroll;
+}
 }
