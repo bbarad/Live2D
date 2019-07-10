@@ -12,8 +12,8 @@ setup(
     author_email="baradb@gene.com",
     keywords="cryoem warp cistem tornado",
     packages=find_packages(),
-    instalL_requires=requires,
-    python_requires=">=3.5"
+    install_requires=requires,
+    python_requires=">=3.5",
     entry_points={
         'console_scripts': [
             'serve_app = live_2d:main',
