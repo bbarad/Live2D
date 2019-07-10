@@ -13,15 +13,29 @@ settings = {
     "autoreload":"True",
 }
 
+# Configuration of live processing settings
+config = {"job_running": False,
+          "warp_folder": "/gne/scratch/u/baradb/",
+          "working_directory": "outputdata",
+          "galleries": [],
+          "logfile": "logfile.txt",
+          }
+
 class IndexHandler(RequestHandler):
     def get(self):
         self.render("index.html")
+
+class GalleryHandler(RequestHandler):
+    def get(self):
+        pass
+
 
 def main():
     """Construct and serve the tornado app"""
 
     parse_command_line()
     app=Application([(r"/", IndexHandler),
+        (r"/gallery", GalleryHandler),
         ],**settings)
     app.listen(options.port)
     print('Listening on http://localhost:%i' % options.port)
