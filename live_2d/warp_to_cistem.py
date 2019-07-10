@@ -55,8 +55,7 @@ else:
     new_star_file = recent_class
 
 particle_count, particles_per_process, class_fraction = processing_functions.calculate_particle_statistics(filename=new_star_file, class_number=class_number, particles_per_class=particles_per_class_target, process_count=process_count)
-print("{0} particles per process will be classified by {1} processes.".format(particles_per_process, process_count))
-print("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, class_number))
+
 
 if not previous_classes_bool:
     processing_functions.generate_new_classes(class_number=class_number, input_stack="{}.mrcs".format(stack_label), pixel_size = pixel_size, low_res = low_res_limit, high_res = high_res_limit_initial)
@@ -69,6 +68,9 @@ if classify_by_resolution:
     print("=====================================")
     print("Beginning Iterative 2D Classification")
     print("=====================================")
+    print("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, class_number))
+    print("Classification will begin at {}Å and step up to {}Å resolution over {} iterative cycles of classification".format(high_res_limit_initial, high_res_limit_final, resolution_cycle_count))
+    print("{0} particles per process will be classified by {1} processes.".format(particles_per_process, process_count))
     for cycle_number in range(resolution_cycle_count):
         high_res_limit = high_res_limit_initial-((high_res_limit_initial-high_res_limit_final)/(resolution_cycle_count-1))*cycle_number
         filename_number = cycle_number + start_cycle_number
@@ -81,14 +83,16 @@ if classify_by_resolution:
         pool.close()
         print(results_list[0].decode('utf-8'))
         processing_functions.merge_2d_subjob(filename_number, process_count=process_count)
-
-        new_star_file =processing_functions.merge_star_files(filename_number, process_count=process_count)
+        processing_functions.make_photos("classes_{}".format(filename_number+1),working_directory)
+        new_star_file = processing_functions.merge_star_files(filename_number, process_count=process_count)
     start_cycle_number = start_cycle_number + resolution_cycle_count
 
 if run_long_cycles:
     print("====================================================")
     print("Long 2D classifications to incorporate all particles")
     print("====================================================")
+    print("All {} particles will be classified into {} classes at resolution {}Å".format(particle_count, class_number, high_res_limit_final))
+    print("{0} particles per process will be classified by {1} processes.".format(particles_per_process, process_count))
     # 5 cycles of finalizing refinement to clean it up.
     for cycle_number in range(long_cycle_count):
         high_res_limit = high_res_limit_final
@@ -100,6 +104,7 @@ if run_long_cycles:
         results_list = pool.map(refine_job, range(process_count))
         print(results_list[0].decode('utf-8'))
         processing_functions.merge_2d_subjob(filename_number, process_count=process_count)
+        processing_functions.make_photos("classes_{}".format(filename_number+1),working_directory)
         new_star_file = processing_functions.merge_star_files(filename_number, process_count=process_count)
 #
 times.append(time.time())

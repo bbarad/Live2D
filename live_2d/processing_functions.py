@@ -10,6 +10,7 @@ import mrcfile
 import numpy as np
 import pandas
 from pyem import star
+import scipy.misc
 
 def isheader(string):
     if string.startswith("_".encode("utf-8")):
@@ -24,9 +25,23 @@ def isheader(string):
         return True
     return False
 
+def make_photos(basename, working_directory):
+    if not os.path.isdir(os.path.join(working_directory, "classes")):
+        os.mkdir(os.path.join(working_directory, "classes"))
+    if not os.path.isdir(os.path.join(working_directory,"classes",basename)):
+        os.mkdir(os.path.join(working_directory,"classes",basename))
+    photo_dir = os.path.join(working_directory,"classes",basename)
+    with mrcfile.open("{}.mrc".format(basename), "r") as stack:
+        for index,item in enumerate(stack.data):
+            scipy.misc.imsave(os.path.join(photo_dir,"{}.png".format(index+1)), item)
+    return photo_dir
+
+def change_warp_folder(new_folder):
+    
+
+
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory):
     """Function to generate new image stacks based only on the results of the first stack. Also, while I am doing it, I will write out a base star file to use for appending and/or regenerating for further class files.
-
     I am doing everything using a memory mapped mrc file. This does not allow easy appending, so I am writing directly to the memory map once it is created as a numpy mmap, then I am reloading as an mrcfile mmap and fixing the header."""
     print("=======================================")
     print("Combining Stacks of Particles from Warp")
@@ -329,9 +344,9 @@ def generate_star_file(stack_label, previous_classes_bool=False, recent_class = 
 
 if __name__=="__main__":
     print("This is a function library and should not be called directly.")
-    print("Testing particle import with streaming")
-    stack_label="streaming_combine"
-    warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
-    warp_star_filename = "allparticles_GenentechNet2Mask_20190627.star"
-    working_directory = "/gne/scratch/u/baradb/outputdata"
-    import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory)
+    # print("Testing particle import with streaming")
+    # stack_label="streaming_combine"
+    # warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
+    # warp_star_filename = "allparticles_GenentechNet2Mask_20190627.star"
+    # working_directory = "/gne/scratch/u/baradb/outputdata"
+    # import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory)
