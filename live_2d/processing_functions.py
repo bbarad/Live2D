@@ -13,19 +13,14 @@ from pyem import star
 
 def isheader(string):
     if string.startswith("_".encode("utf-8")):
-        print(string)
         return True
     if string.startswith("#".encode("utf-8")):
-        print(string)
         return True
     if string.startswith("data_".encode("utf-8")):
-        print(string)
         return True
     if string.startswith("loop_".encode("utf-8")):
-        print(string)
         return True
     if string.isspace():
-        print(string)
         return True
     return False
 
@@ -258,11 +253,14 @@ def merge_2d_subjob(cycle, process_count=32):
 
 
 def calculate_particle_statistics(filename, class_number=50, particles_per_class=300, process_count = 32):
-    with open(filename) as f:
+    with open(filename, "rb") as f:
         i=0
+        j = 0
         for i,l in enumerate(f):
+            if isheader(l):
+                j += 1
             pass
-        particle_count = i+1
+        particle_count = i+1-j
 
     particles_per_process = int(ceil(particle_count / process_count))
 
