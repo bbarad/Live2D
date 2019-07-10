@@ -7,6 +7,7 @@
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.css" integrity="sha256-HAaDW5o2+LelybUhfuk0Zh2Vdk8Y2W2UeKmbaXhalfA=" crossorigin="anonymous" />
     <link rel="stylesheet" href="{{ static_url('custom.css') }}">
 
     <!-- Favicon -->
@@ -35,57 +36,57 @@
       <h2 class="text-center">Job Status: Stopped</h2>
       <hr>
       <div class="row">
-        <div class="col-md-7 col-xl-8 order-md-last">
+        <div class="col-md-7 col-xl-8 order-md-last" id="right">
           <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="class-gallery"> Classes </h3>
           <!-- MRC GALLERY IMPLEMENTATION HERE -->
           <div class="mrc-gallery collapse show" id="class-gallery">
           </div>
           <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#console"> Job Output </button>
-          <div id="console" class="terminal collapse">
-            C Refine2D run date and time:              2019-07-03 09:49:01
-            C Input particle images:                   combined_stack.mrcs
-            C Input Frealign parameter filename:       classes_30.par
-            C Input class averages:                    classes_30.mrc
-            C Output parameter file:                   partial_classes_31_0.par
-            C Output class averages:                   classes_31.mrc
-            C First particle to refine:                1
-            C Last particle to refine:                 1673
-            C Percent of particles to use:             0.280000
-            C Pixel size of images (A):                1.200700
-            C Beam energy (keV):                       300.000000
-            C Spherical aberration (mm):               2.700000
-            C Amplitude contrast:                      0.070000
-            C Mask radius for refinement (A):          150.000000
-            C Low resolution limit (A):                300.000000
-            C High resolution limit (A):               11.555555
-            C Angular step:                            15.000000
-            C Search range in X (A):                   49.500000
-            C Search range in Y (A):                   49.500000
-            C Smoothing factor:                        1.000000
-            C Padding factor:                          2
-            C Normalize particles:                     Yes
-            C Invert particle contrast:                Yes
-            C Exclude images with blank edges:         No
-            C Dump intermediate arrays:                Yes
-            C Output dump filename:                    dump_file_1.dat
-            C
-            C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      DF2  ANGAST  PSHIFT     OCC      LogP      SIGMA   SCORE  CHANGE
-                  1  316.70    0.00    0.00    -18.49     13.13   10000   -17   8933.8   8640.4   31.00    0.00  100.00     -7667    56.6754   90.88    0.00
-                  2  209.10    0.00    0.00      4.12     -8.02   10000   -17   8934.5   8641.0   31.00    0.00  100.00    -13634    32.9073   55.71    0.00
-                  3  226.70    0.00    0.00      8.40    -34.85   10000   -17   8939.5   8646.0   31.00    0.00  100.00     -7397    55.4384  101.27    0.00
-                  4  362.41    0.00    0.00     -6.66     20.31   10000   -17   8928.7   8635.2   31.00    0.00  100.00    -12317    30.4717   44.20    0.00
-                  5   48.26    0.00    0.00     -5.05     35.72   10000   -17   8949.4   8655.9   31.00    0.00  100.00     -5734    64.1573  135.43    0.00
-                  6  302.68    0.00    0.00     10.80     16.84   10000   -17   8940.1   8646.7   31.00    0.00  100.00     -1157    49.9121  143.70    0.00
-                  7  147.95    0.00    0.00     -4.60      1.06   10000    17   8948.7   8655.2   31.00    0.00  100.00    -10457    45.4284   69.99  -91.82
-                  8  108.26    0.00    0.00     30.03     11.16   10000   -17   8929.6   8636.2   31.00    0.00  100.00     -6657    70.2589   77.91    0.00
-                  9  330.66    0.00    0.00    -98.08     82.61   10000   -36   8913.9   8620.4   31.00    0.00  100.00     -3902    62.9924   47.69    0.00
-                 10  347.41    0.00    0.00    -14.96     32.54   10000   -17   8915.5   8622.0   31.00    0.00  100.00    -15615    36.2638   50.23    0.00
-          </div>
+          <pre><div id="console" class="terminal collapse">
+C Refine2D run date and time:              2019-07-03 09:49:01
+C Input particle images:                   combined_stack.mrcs
+C Input Frealign parameter filename:       classes_30.par
+C Input class averages:                    classes_30.mrc
+C Output parameter file:                   partial_classes_31_0.par
+C Output class averages:                   classes_31.mrc
+C First particle to refine:                1
+C Last particle to refine:                 1673
+C Percent of particles to use:             0.280000
+C Pixel size of images (A):                1.200700
+C Beam energy (keV):                       300.000000
+C Spherical aberration (mm):               2.700000
+C Amplitude contrast:                      0.070000
+C Mask radius for refinement (A):          150.000000
+C Low resolution limit (A):                300.000000
+C High resolution limit (A):               11.555555
+C Angular step:                            15.000000
+C Search range in X (A):                   49.500000
+C Search range in Y (A):                   49.500000
+C Smoothing factor:                        1.000000
+C Padding factor:                          2
+C Normalize particles:                     Yes
+C Invert particle contrast:                Yes
+C Exclude images with blank edges:         No
+C Dump intermediate arrays:                Yes
+C Output dump filename:                    dump_file_1.dat
+C
+C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      DF2  ANGAST  PSHIFT     OCC      LogP      SIGMA   SCORE  CHANGE
+      1  316.70    0.00    0.00    -18.49     13.13   10000   -17   8933.8   8640.4   31.00    0.00  100.00     -7667    56.6754   90.88    0.00
+      2  209.10    0.00    0.00      4.12     -8.02   10000   -17   8934.5   8641.0   31.00    0.00  100.00    -13634    32.9073   55.71    0.00
+      3  226.70    0.00    0.00      8.40    -34.85   10000   -17   8939.5   8646.0   31.00    0.00  100.00     -7397    55.4384  101.27    0.00
+      4  362.41    0.00    0.00     -6.66     20.31   10000   -17   8928.7   8635.2   31.00    0.00  100.00    -12317    30.4717   44.20    0.00
+      5   48.26    0.00    0.00     -5.05     35.72   10000   -17   8949.4   8655.9   31.00    0.00  100.00     -5734    64.1573  135.43    0.00
+      6  302.68    0.00    0.00     10.80     16.84   10000   -17   8940.1   8646.7   31.00    0.00  100.00     -1157    49.9121  143.70    0.00
+      7  147.95    0.00    0.00     -4.60      1.06   10000    17   8948.7   8655.2   31.00    0.00  100.00    -10457    45.4284   69.99  -91.82
+      8  108.26    0.00    0.00     30.03     11.16   10000   -17   8929.6   8636.2   31.00    0.00  100.00     -6657    70.2589   77.91    0.00
+      9  330.66    0.00    0.00    -98.08     82.61   10000   -36   8913.9   8620.4   31.00    0.00  100.00     -3902    62.9924   47.69    0.00
+     10  347.41    0.00    0.00    -14.96     32.54   10000   -17   8915.5   8622.0   31.00    0.00  100.00    -15615    36.2638   50.23    0.00
+          </div></pre>
           <!-- STREAMING STDOUT TO A "TERMINAL" HERE -->
           <hr>
         </div>
         <!-- Options Pane -->
-        <div class="col-md-5 col-xl-4 order-md-first">
+        <div class="col-md-5 col-xl-4 order-md-first" id="left">
           <form class="form" id="options-form">
             <div class="btn-toolbar" role="toolbar">
               <div class="btn-group mr-2 mb-2">
@@ -97,7 +98,7 @@
               </div>
             </div>
             <hr>
-            <div id="accordion">
+            <div id="subleft">
               <div>
                 <div id="user-settings">
                   <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseOne">User Settings </button></h3>
@@ -256,6 +257,7 @@
 
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.js" integrity="sha256-jGAkJO3hvqIDc4nIY1sfh/FPbV+UK+1N+xJJg6zzr7A=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
