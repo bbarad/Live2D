@@ -28,14 +28,14 @@ high_res_limit_final = 8.0
 low_res_limit = 300
 process_count = 32
 resolution_cycle_count = 10
-classify_by_resolution = True
+classify_by_resolution = False
 long_cycle_count = 2
 run_long_cycles = True
 class_number = 50
 angular_search_step = 15.0
 max_search_range = 49.5
 particles_per_class_target = 300
-get_new_particles_from_warp = True
+get_new_particles_from_warp = False
 
 
 
@@ -100,7 +100,7 @@ if run_long_cycles:
         results_list = pool.map(refine_job, range(process_count))
         print(results_list[0].decode('utf-8'))
         processing_functions.merge_2d_subjob(filename_number, process_count=process_count)
-        new_par_file = processing_functions.merge_par_files(filename_number, process_count=process_count)
+        new_star_file = processing_functions.merge_star_files(filename_number, process_count=process_count)
 #
 times.append(time.time())
 os.chdir(starting_directory)
