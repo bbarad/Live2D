@@ -14,8 +14,10 @@ async def initialize(config = config):
     return message
 
 # This should not be async - I don't want a single other thing happening when I write out.
-def dump():
+def dump_json(config=config):
     with open("latest_run.json") as jsonfile:
+        json.write(config, jsonfile)
+    with open("{}/latest_run.json".format(config["working_directory"])) as jsonfile:
         json.write(config, jsonfile)
 
 async def generate_gallery_html(config, gallery_selected = None):
