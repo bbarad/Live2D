@@ -37,10 +37,10 @@ def make_photos(basename, working_directory):
     return photo_dir
 
 def change_warp_folder(new_folder):
-    
+    pass
 
 
-def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory):
+def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory, new_net=False):
     """Function to generate new image stacks based only on the results of the first stack. Also, while I am doing it, I will write out a base star file to use for appending and/or regenerating for further class files.
     I am doing everything using a memory mapped mrc file. This does not allow easy appending, so I am writing directly to the memory map once it is created as a numpy mmap, then I am reloading as an mrcfile mmap and fixing the header."""
     print("=======================================")
@@ -49,6 +49,9 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     start_time = time.time()
     combined_filename = "{}/{}.mrcs".format(working_directory, stack_label)
     previous_file = os.path.isfile(combined_filename)
+    if new_net:
+        # Hack to overwrite the old file if you switch to a new neural net.
+        previous_file = False
     os.chdir(warp_folder)
     total_particles = star.parse_star(warp_star_filename)
     print(len(total_particles))
