@@ -1,7 +1,14 @@
 from setuptools import setup, find_packages
 
 requires = [
-    'tornado',
+    'tornado>=6.0.2',
+    "mrcfile>=1.1.2",
+    "multiprocess>=0.70.8",
+    "numpy>=1.16.2",
+    "pandas>=0.24.2",
+    "-e git+https://github.com/bbarad/pyem.git@58fc29e7b27a55d46ac78357b246f37819bfb3ee#egg=pyem",
+    "scipy>=1.2.1",
+    "terminado>=0.8.1",
 ]
 
 setup(
