@@ -1,14 +1,22 @@
-<div class="row">
-{% for class in classification.entries %}
-<div class="col-3">
-    <img src="data:image/png;base64, {{class.data}}" class="img-fluid" alt="{{class.name}}">
+{# <button class="btn btn-block btn-secondary" data-toggle="collapse" id="class-button"> Classes </button>
+<div class="mrc-gallery collapse show" id="class-gallery"> #}
+<div class="row no-gutters">
+{% for entry in current_gallery["entries"] %}
+  <div class="col-lg-3 col-4">
+    <a href="data:image/png;base64, {{entry['data']}}" data-toggle="lightbox"  data-gallery="gallery" data-footer="Classification {{current_gallery['number']}} | {{entry['name']}}" data-max-width="400">
+      <img src="data:image/png;base64, {{entry['data']}}" class="img-fluid" alt="{{entry['name']}}">
+    </a>
+  </div>
+{% end %}
 </div>
-{% endfor %}
-</div>
-<nav aria-label="Class Navigation">
-  <ul class="pagination">
+<nav aria-label="Class Navigation" class="mt-1">
+  <ul class="pagination justify-content-center">
     {% for classification in classification_list %}
-      <li class="page-item"><a class="page-link" href="#" id="classification-link-{{ classification.number }}" {% if current_classification == classification.number %}active{% endif %}>
-    {% endfor %}
+      <li class="page-item">
+        <a class="page-link {% if classification['number'] == current_gallery['number'] %}active{% end %}" href="#" id="classification-link-{{ classification['number'] }}">{{classification['number']}}</a>
+      </li>
+    {% end %}
   </ul>
 </nav>
+{# <p>Placeholder</p> #}
+{# </div> #}

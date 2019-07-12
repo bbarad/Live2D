@@ -1,8 +1,14 @@
 
 
-.mrc-gallery {
+/* .mrc-gallery {
   background-color: #eee;
   max-height: 50vh;
+} */
+.class-gallery{
+  background-color: #eee;
+  overflow: auto;
+  max-height: 50vh;
+  white-space: pre-wrap;
 }
 
 .terminal {

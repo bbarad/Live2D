@@ -7,7 +7,7 @@
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.css" integrity="sha256-HAaDW5o2+LelybUhfuk0Zh2Vdk8Y2W2UeKmbaXhalfA=" crossorigin="anonymous" /> -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.css" integrity="sha256-HAaDW5o2+LelybUhfuk0Zh2Vdk8Y2W2UeKmbaXhalfA=" crossorigin="anonymous" />
     <link rel="stylesheet" href="{{ static_url('custom.css') }}">
 
     <!-- Favicon -->
@@ -36,11 +36,13 @@
       <h2 class="text-center">Job Status: Stopped</h2>
       <hr>
       <div class="row">
-        <div class="col-md-7 col-xl-8 order-md-last" id="right">
-          <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="class-gallery"> Classes </h3>
-          <!-- MRC GALLERY IMPLEMENTATION HERE -->
-          <div class="mrc-gallery collapse show" id="class-gallery">
+        <div class="col-md-7 col-xl-8 col-12 order-md-last" id="right">
+          <div id="gallery-block">
+            <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#class-gallery" id="class-button"> Classes </button>
+            <div class="mrc-gallery collapse show" id="class-gallery">
+            </div>
           </div>
+          <hr>
           <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#console"> Job Output </button>
           <pre><div id="console" class="terminal collapse">
 C Refine2D run date and time:              2019-07-03 09:49:01
@@ -86,11 +88,15 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
           <hr>
         </div>
         <!-- Options Pane -->
-        <div class="col-md-5 col-xl-4 order-md-first" id="left">
+        <div class="col-md-5 col-xl-4 col-12 order-md-first" id="left">
           <form class="form" id="options-form">
             <div class="form-group">
               <label for="warp-directory">Warp Directory </label>
-              <input type="text" class="form-control" id="warp-directory" placeholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory">
+              <input type="text" class="form-control" id="warp-directory" plceholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory">
+            </div>
+            <div class="form-group">
+              <label for="neural-net">Neural Net Used</label>
+              <input type="text" class="form-control" id="neural-net"  aria-label="neural-net">
             </div>
             <div class="btn-toolbar" role="toolbar">
               <div class="btn-group mr-2 mb-2">
@@ -120,7 +126,7 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                     </div>
                     <div class="col-lg">
                       <div class="form-group form-group-inline">
-                        <label for="low-res">Mask Radius: </label>
+                        <label for="mask-radius">Mask Radius: </label>
                         <div class="input-group">
                           <input type="text" class="form-control" id="mask-radius" placeholder="150" aria-label="mask-radius">
                           <div class="input-group-append"><span class="input-group-text" id=mask-radius-unit>Å</span></div>
@@ -132,7 +138,7 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                   <div class="row">
                     <div class="col">
                       <label for="classification-type">Classification Type </label>
-                      <div class="form-group btn-group btn-group-toggle" data-toggle="buttons">
+                      <div class="form-group btn-group btn-group-toggle" data-toggle="buttons" id="classification-type">
                         <label class="btn btn-info active" tabindex="0" rel="popover" data-trigger="hover" data-placement="top" Title="Ab Initio Classification" data-content="Ab initio refinement will generate new random classes and begin classification of a subset of particles starting at the initial high res limit.">
                           <input type="radio" name="classification-type" id="abinit" value="abinit" checked> Ab Initio </input>
                         </label>
@@ -258,11 +264,11 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
 
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.js" integrity="sha256-jGAkJO3hvqIDc4nIY1sfh/FPbV+UK+1N+xJJg6zzr7A=" crossorigin="anonymous"></script> -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="{{ static_url('webapp.js') }}"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/4.4.0/bootbox.min.js" integrity="sha256-4F7e4JsAJyLUdpP7Q8Sah866jCOhv72zU5E8lIRER4w=" crossorigin="anonymous"></script>
-    <script src="{{ static_url('webapp.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.js" integrity="sha256-jGAkJO3hvqIDc4nIY1sfh/FPbV+UK+1N+xJJg6zzr7A=" crossorigin="anonymous"></script>
   </body>
 </html>

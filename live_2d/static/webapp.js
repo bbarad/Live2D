@@ -34,10 +34,43 @@ $(document).ready(function () {
     ws.onmessage = function(msg){
       data_object = JSON.parse(msg.data)
       switch(data_object.type) {
+        case "init":
+          get_settings_from_server(data_object.settings);
+          update_class_gallery(data_object.gallery_data);
         default:
-          bootbox.alert("Didn't understand the message type "+data_object.type)
+          // bootbox.alert("Didn't understand the message type "+data_object.type)
       }
     }
+  }
+  function get_settings_from_server(settings) {
+    $("#warp-directory").val(settings.warp_folder);
+    $("#neural-net").val(settings.neural_net);
+    $("#pixel-size").val(settings.pixel_size);
+    $("#mask-radius").val(settings.mask_radius);
+    $("#" + settings.classification_type).click();
+    $("#high-res-initial").val(settings.high_res_initial);
+    $("#high-res-final").val(settings.high_res_final);
+    $("#startup-cycle-count").val(settings.run_count_startup);
+    $("#refinement-cycle-count").val(settings.run_count_refine);
+    $("#start-count").val(settings.particle_count_initial);
+    $("#update-count").val(settings.particle_count_update);
+    $("#number-classes").val(settings.class_number);
+    $("#number-per-class").val(settings.particles_per_class);
+    $("#autocenter").prop("checked", settings.autocenter);
+    $("#automask").prop("checked", settings.automask)
+    // bootbox.alert("settings: "+settings)
+  }
+
+  function send_settings_to_server(settings) {}
+
+  function update_class_gallery(data) {
+    // bootbox.alert("gallery data "+data)
+    $("#class-gallery").html(data);
+    // $("#class-gallery").collapse();
+    $(document).on('click', '[data-toggle="lightbox"]', function(event) {
+                  event.preventDefault();
+                  $(this).ekkoLightbox();
+    });
   }
 })
 

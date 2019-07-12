@@ -7,7 +7,7 @@ from tornado.options import define, options, parse_command_line
 from tornado.web import Application, RequestHandler
 from tornado.websocket import WebSocketHandler
 
-from controls import initialize
+from controls import initialize, load_config
 
 import socket_handlers
 
@@ -20,6 +20,7 @@ settings = {
     "autoreload":"True",
 }
 
+config = load_config('latest_run.json')
 
 class SocketHandler(WebSocketHandler):
     def open(self):
@@ -42,7 +43,7 @@ class SocketHandler(WebSocketHandler):
         elif type == 'get_gallery':
             pass
         elif type == 'initialize':
-            return_data = await initialize()
+            return_data = await initialize(config)
             self.write_message(return_data)
             pass
         else:
@@ -67,7 +68,6 @@ class IndexHandler(RequestHandler):
 
 def main():
     """Construct and serve the tornado app"""
-
     parse_command_line()
     app=Application([(r"/", IndexHandler),
         # (r"/gallery", GalleryHandler),
