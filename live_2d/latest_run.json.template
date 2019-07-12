@@ -1,7 +1,7 @@
 {"job_running": false,
   "warp_folder": "/local/scratch/krios/Warp_Transfers/TestData",
   "neural_net": "GenentechNet2Mask_20190627",
-  "working_directory": "outputdata",
+  "working_directory": "static/example",
   "settings": {
     "pixel_size": 1.2007,
     "mask_radius": 150.0,
@@ -9,13 +9,21 @@
     "high_res_final": 8.0,
     "run_count_startup": 15,
     "run_count_refine": 5,
-    "classification_type": "abinit",
+    "classification_type": "seeded",
     "particle_count_initial": 50000,
     "particle_count_update": 50000,
     "autocenter": true,
-    "automask": false
+    "automask": true,
+    "class_number": 50,
+    "particles_per_class": 300
   },
   "classes": [],
-  "galleries": [],
+  "galleries": [
+    {
+      "name": "class_1",
+      "class_count": 50,
+      "number": 1
+    }
+  ],
   "logfile": "logfile.txt"
 }
