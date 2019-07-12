@@ -1,7 +1,7 @@
 {"job_running": false,
   "warp_folder": "/local/scratch/krios/Warp_Transfers/TestData",
   "neural_net": "GenentechNet2Mask_20190627",
-  "working_directory": "static/example",
+  "working_directory": "/local/scratch/krios/Warp_Transfers/TestData/classification",
   "settings": {
     "pixel_size": 1.2007,
     "mask_radius": 150.0,
@@ -17,7 +17,26 @@
     "class_number": 50,
     "particles_per_class": 300
   },
-  "classes": [],
+  "classes": [{
+    "number": 1,
+    "settings": {
+      "pixel_size": 1.2007,
+      "mask_radius": 150.0,
+      "high_res_initial": 40.0,
+      "high_res_final": 8.0,
+      "run_count_startup": 15,
+      "run_count_refine": 5,
+      "classification_type": "seeded",
+      "particle_count_initial": 50000,
+      "particle_count_update": 50000,
+      "autocenter": true,
+      "automask": true,
+      "class_number": 50,
+      "particles_per_class": 300
+    },
+    "neural_net": "GenentechNet2Mask_20190627",
+    "particle_count": 53587
+    }],
   "galleries": [
     {
       "name": "class_1",
