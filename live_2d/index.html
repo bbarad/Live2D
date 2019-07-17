@@ -8,32 +8,32 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.css" integrity="sha256-HAaDW5o2+LelybUhfuk0Zh2Vdk8Y2W2UeKmbaXhalfA=" crossorigin="anonymous" />
-    <link rel="stylesheet" href="{{ static_url('custom.css') }}">
+    <link rel="stylesheet" href="/static/custom.css">
 
     <!-- Favicon -->
-    <link rel="apple-touch-icon" sizes="57x57" href="{{ static_url('favicon/apple-icon-57x57.png') }}">
-    <link rel="apple-touch-icon" sizes="60x60" href="{{static_url('favicon/apple-icon-60x60.png')}}">
-    <link rel="apple-touch-icon" sizes="72x72" href="{{static_url('favicon/apple-icon-72x72.png')}}">
-    <link rel="apple-touch-icon" sizes="76x76" href="{{static_url('favicon/apple-icon-76x76.png')}}">
-    <link rel="apple-touch-icon" sizes="114x114" href="{{static_url('favicon/apple-icon-114x114.png')}}">
-    <link rel="apple-touch-icon" sizes="120x120" href="{{static_url('favicon/apple-icon-120x120.png')}}">
-    <link rel="apple-touch-icon" sizes="144x144" href="{{static_url('favicon/apple-icon-144x144.png')}}">
-    <link rel="apple-touch-icon" sizes="152x152" href="{{static_url('favicon/apple-icon-152x152.png')}}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{static_url('favicon/apple-icon-180x180.png')}}">
-    <link rel="icon" type="image/png" sizes="192x192"  href="{{static_url('favicon/android-icon-192x192.png')}}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{static_url('favicon/favicon-32x32.png')}}">
-    <link rel="icon" type="image/png" sizes="96x96" href="{{static_url('favicon/favicon-96x96.png')}}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{static_url('favicon/favicon-16x16.png')}}">
-    <link rel="manifest" href="{{static_url('favicon/manifest.json')}}">
+    <link rel="apple-touch-icon" sizes="57x57" href="/static/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/static/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/static/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/static/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/static/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/static/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/static/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/static/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/static/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/static/favicon/manifest.json">
     <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="{{static_url('favicon/ms-icon-144x144.png')}}">
+    <meta name="msapplication-TileImage" content="/static/favicon/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
     <title>Live 2D Classification</title>
   </head>
   <body>
     <div class="container">
       <div class="text-center"><h1>Live 2D Classification on Krios-1</h1></div>
-      <h2 class="text-center">Job Status: Stopped</h2>
+      <h2 class="text-center">Job Status: <div id="job-status">Stopped</div></h2>
       <hr>
       <div class="row">
         <div class="col-md-7 col-xl-8 col-12 order-md-last" id="right">
@@ -43,7 +43,7 @@
             </div>
           </div>
           <hr>
-          <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#console"> Job Output </button>
+          <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#console"> Job Output (Last 1000 Lines) </button>
           <pre><div id="console" class="terminal collapse">
 C Refine2D run date and time:              2019-07-03 09:49:01
 C Input particle images:                   combined_stack.mrcs
@@ -92,19 +92,16 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
           <form class="form" id="options-form">
             <div class="form-group">
               <label for="warp-directory">Warp Directory </label>
-              <input type="text" class="form-control" id="warp-directory" plceholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory">
+              <input type="text" class="form-control" id="warp-directory" placeholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory">
             </div>
-            <div class="form-group">
-              <label for="neural-net">Neural Net Used</label>
-              <input type="text" class="form-control" id="neural-net"  aria-label="neural-net">
+            <div class="btn-toolbar my-2">
+              <button disabled type="button" class="btn btn-block btn-primary" id="update-warp-directory" rel="popover" data-trigger="hover" data-placement="top" Title="Update Warp Directory" data-content="Change the directory for your warp project. Use a symlinked directory to avoid writing to the data collection folder. This must be updated before updating settings.">Update Warp Directory</button>
             </div>
-            <div class="btn-toolbar" role="toolbar">
-              <div class="btn-group mr-2 mb-2">
-                <button type="button" class="btn btn-primary" id="submit-settings">Update Settings</button>
-              </div>
-              <div class="btn-group mr-2 mb-2">
-                <button type="button" class="btn btn-success" id="start-job">Start Job</button>
-                <button type="button" class="btn btn-danger" id="stop-job" disabled>Stop Job</button>
+            <div class="btn-toolbar d-flex" role="toolbar">
+              <div class="btn-group w-100">
+                {# <button type="button" class="btn btn-primary" id="submit-settings" rel="popover" data-trigger="hover" data-placement="top" Title="Update Settings" data-content="Push your user-selected settings to the server. Only works when jobs aren't running. Run this before you start a job if you want to change any settings.">Update Settings</button> #}
+                <button type="button" class="btn btn-success" id="start-job" rel="popover" data-trigger="hover" data-placement="top" Title="Start job" data-content="Runs job based on last updated settings sent to server. Run a settings update first if you want to change anything. Does nothing if a job is currently running.">Start Job</button>
+                <button type="button" class="btn btn-danger" id="stop-job" rel="popover" data-trigger="hover" data-placement="top" Title="Stop Job" data-content="Stop a job after the next cycle is complete. Currently users do not have the ability to kill jobs mid-cycle. Does nothing if no job is running." disabled>Stop Job</button>
               </div>
             </div>
             <hr>
@@ -114,6 +111,10 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                   <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseOne">User Settings </button></h3>
                 </div>
                 <div id="collapseOne" class="collapse show" aria-labelledby="user-settings">
+                  <div class="form-group">
+                    <label for="neural-net">Neural Net Used</label>
+                    <input type="text" class="form-control" id="neural-net"  aria-label="neural-net" rel="popover" data-trigger="hover" data-placement="top" Title="Neural Net" data-content="The Neural Net used to process your data. When you change this entry, a new particle stack is generated from scratch, which takes longer than an update, and new class averages will be generated from a random seed.">
+                  </div>
                   <div class="row">
                     <div class="col-lg">
                       <div class="form-group form-group-inline">
@@ -138,7 +139,7 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                   <div class="row">
                     <div class="col">
                       <label for="classification-type">Classification Type </label>
-                      <div class="form-group btn-group btn-group-toggle" data-toggle="buttons" id="classification-type">
+                      <div class="form-group btn-group btn-group-toggle w-100" data-toggle="buttons" id="classification-type">
                         <label class="btn btn-info active" tabindex="0" rel="popover" data-trigger="hover" data-placement="top" Title="Ab Initio Classification" data-content="Ab initio refinement will generate new random classes and begin classification of a subset of particles starting at the initial high res limit.">
                           <input type="radio" name="classification-type" id="abinit" value="abinit" checked> Ab Initio </input>
                         </label>
@@ -199,17 +200,17 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                 <div class="row">
                   <div class="col-lg">
                     <div class="form-group">
-                      <label for="start-count">Particle Count Before Starting: </label>
+                      <label for="start-count">Particle Count Before Starting (Nonfunctional): </label>
                       <div class="input-group mr-2">
-                        <input type="text" class="form-control" id="start-count" placeholder="50000" aria-label="start-count">
+                        <input type="text" class="form-control" id="start-count" placeholder="50000" aria-label="start-count" disabled>
                       </div>
                     </div>
                   </div>
                   <div class="col-lg">
                     <div class="form-group form-group-inline">
-                      <label for="update-count">Additional Particle Count Before Update: </label>
+                      <label for="update-count">Additional Particle Count Before Update (Nonfunctional): </label>
                       <div class="input-group mr-2">
-                        <input type="text" class="form-control" id="update-count" placeholder="50000" aria-label="update-count">
+                        <input type="text" class="form-control" id="update-count" placeholder="50000" aria-label="update-count" disabled >
                       </div>
                     </div>
                   </div>
@@ -219,7 +220,7 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                     <div class="form-group">
                       <label for="number-classes">Number of Classes:</label>
                       <div class="input-group mr-2">
-                        <input type="text" class="form-control" id="number-classes" placeholder="50" aria-label="number-classes" disabled>
+                        <input type="text" class="form-control" id="number-classes" placeholder="50" aria-label="number-classes">
                       </div>
                     </div>
                   </div>
@@ -227,7 +228,7 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
                     <div class="form-group form-group-inline">
                       <label for="number-per-class"> Initial Particles Per Class: </label>
                       <div class="input-group mr-2">
-                        <input type="text" class="form-control" id="number-per-class" placeholder="300" aria-label="number-per-class" disabled>
+                        <input type="text" class="form-control" id="number-per-class" placeholder="300" aria-label="number-per-class">
                       </div>
                     </div>
                   </div>
@@ -266,7 +267,7 @@ C           PSI   THETA     PHI       SHX       SHY     MAG  FILM      DF1      
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="{{ static_url('webapp.js') }}"></script>
+    <script src="/static/webapp.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/4.4.0/bootbox.min.js" integrity="sha256-4F7e4JsAJyLUdpP7Q8Sah866jCOhv72zU5E8lIRER4w=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.js" integrity="sha256-jGAkJO3hvqIDc4nIY1sfh/FPbV+UK+1N+xJJg6zzr7A=" crossorigin="anonymous"></script>
