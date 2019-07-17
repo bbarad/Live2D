@@ -10,7 +10,7 @@ import subprocess
 from sys import argv
 import time
 
-import processing_functions
+import processing_functions_blocking_shell as processing_functions
 
 # Process arguments and memorize the starting directory to move back to at the end of the script - NB if the script crashes the user gets dumped into the wrong place - I will need to fix that...
 
@@ -20,7 +20,7 @@ warp_directory = "/local/scratch/krios/Warp_Transfers/TestData"
 star_file = "allparticles_GenentechNet2Mask_20190627.star"
 # star_file = "all_particles_short.star"
 starting_directory = os.getcwd()
-working_directory = "/gne/scratch/u/baradb/outputdata"
+working_directory = "/local/scratch/krios/Warp_Transfers/TestData/classification"
 stack_label = "combined_stack"
 pixel_size = 1.2007
 high_res_limit_initial = 40.0
@@ -28,14 +28,14 @@ high_res_limit_final = 8.0
 low_res_limit = 300
 process_count = 32
 resolution_cycle_count = 10
-classify_by_resolution = False
-long_cycle_count = 2
+classify_by_resolution = True
+long_cycle_count = 5
 run_long_cycles = True
 class_number = 50
 angular_search_step = 15.0
 max_search_range = 49.5
 particles_per_class_target = 300
-get_new_particles_from_warp = False
+get_new_particles_from_warp = True
 
 
 
@@ -104,7 +104,7 @@ if run_long_cycles:
         results_list = pool.map(refine_job, range(process_count))
         print(results_list[0].decode('utf-8'))
         processing_functions.merge_2d_subjob(filename_number, process_count=process_count)
-        processing_functions.make_photos("classes_{}".format(filename_number+1),working_directory)
+        processing_functions.make_photos("class_{}".format(filename_number+1),working_directory)
         new_star_file = processing_functions.merge_star_files(filename_number, process_count=process_count)
 #
 times.append(time.time())

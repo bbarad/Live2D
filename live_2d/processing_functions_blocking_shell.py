@@ -1,7 +1,5 @@
-import asyncio
 import glob
 import itertools
-import logging as log
 from math import ceil
 import os
 import shutil
@@ -13,20 +11,15 @@ import numpy as np
 import pandas
 from pyem import star
 import scipy.misc
-import sys
 
 def isheader(string):
-    try:
-        string = string.decode()
-    except AttributeError:
-        pass
-    if string.startswith("_"):
+    if string.startswith("_".encode("utf-8")):
         return True
-    if string.startswith("#"):
+    if string.startswith("#".encode("utf-8")):
         return True
-    if string.startswith("data_"):
+    if string.startswith("data_".encode("utf-8")):
         return True
-    if string.startswith("loop_"):
+    if string.startswith("loop_".encode("utf-8")):
         return True
     if string.isspace():
         return True
@@ -43,22 +36,25 @@ def make_photos(basename, working_directory):
             scipy.misc.imsave(os.path.join(photo_dir,"{}.png".format(index+1)), item)
     return photo_dir
 
+def change_warp_folder(new_folder):
+    pass
+
+
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory, new_net=False):
     """Function to generate new image stacks based only on the results of the first stack. Also, while I am doing it, I will write out a base star file to use for appending and/or regenerating for further class files.
     I am doing everything using a memory mapped mrc file. This does not allow easy appending, so I am writing directly to the memory map once it is created as a numpy mmap, then I am reloading as an mrcfile mmap and fixing the header."""
-    log.info("=======================================")
+    print("=======================================")
     print("Combining Stacks of Particles from Warp")
-    log.info("=======================================")
+    print("=======================================")
     start_time = time.time()
-    starting_directory = os.getcwd()
-    combined_filename = os.path.join(working_directory,"{}.mrcs".format(stack_label))
+    combined_filename = "{}/{}.mrcs".format(working_directory, stack_label)
     previous_file = os.path.isfile(combined_filename)
     if new_net:
         # Hack to overwrite the old file if you switch to a new neural net.
         previous_file = False
     os.chdir(warp_folder)
     total_particles = star.parse_star(warp_star_filename)
-    log.info(len(total_particles))
+    print(len(total_particles))
     stacks_filenames = total_particles["rlnImageName"].str.rsplit("@").str.get(-1)
 
     # MAKE PRELIMINARY STACK IF ITS NOT THERE
@@ -69,14 +65,14 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     # GET INFO ABOUT STACKS
     with mrcfile.mmap(combined_filename, "r", permissive=True) as mrcs:
         prev_par = int(mrcs.header.nz)
-        log.info("Previous Particles: {}".format(prev_par))
+        print("Previous Particles: {}".format(prev_par))
         new_particles_count = len(total_particles) - prev_par
-        log.info("Total Particles to Import: {}".format(new_particles_count))
+        print("Total Particles to Import: {}".format(new_particles_count))
         offset = mrcs.data.base.size()
-        # log.info("Bytes Offset: {}".format(offset))
+        # print("Bytes Offset: {}".format(offset))
         data_dtype = mrcs.data.dtype
-        # log.info("dtype: {}".format(data_dtype))
-        # log.info("dtype size: {}".format(data_dtype.itemsize))
+        # print("dtype: {}".format(data_dtype))
+        # print("dtype size: {}".format(data_dtype.itemsize))
         shape=(new_particles_count, mrcs.header.ny, mrcs.header.nx)
 
     # OPEN THE MEMMAP AND ITERATIVELY ADD NEW PARTICLES
@@ -88,7 +84,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             x = partial_mrcs.header.nx
             y = partial_mrcs.header.ny
             z = partial_mrcs.header.nz
-            log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+            print("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
             mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
             new_offset = new_offset+z
     mrcfile_raw.flush()
@@ -158,22 +154,21 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             ]
             file.write("\t".join(row_data))
             file.write("\n")
-    os.chdir(starting_directory)
+
     end_time = time.time()
-    log.info("Total Time: {}s".format(end_time - start_time))
-    return len(total_particles)
+    print("Total Time: {}s".format(end_time - start_time))
 
 
-def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40, new_star_file = "cycle_0.star", working_directory = "~"):
-    log.info("====================")
-    log.info("Preparing 2D Classes")
-    log.info("====================")
+def generate_new_classes(class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40):
+    print("====================")
+    print("Preparing 2D Classes")
+    print("====================")
     input = "\n".join([
         input_stack, # Input MRCS stack
-        new_star_file, # Input Star file
+        "classes_0.star", # Input Star file
         os.devnull, # Input MRC classes
         os.devnull, # Output star file
-        "cycle_{}.mrc".format(start_cycle_number), # Output MRC class
+        "classes_0.mrc", # Output MRC class
         str(class_number), # number of classes to generate for the first time - only use when starting a NEW classification
         "1", # First particle in stack to use
         "0", # Last particle in stack to use - 0 is the final.
@@ -198,11 +193,11 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
         "No.dat", # Datfilename,
         "1", # max threads
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/refine2d", stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/refine2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
-    log.info(out.decode('utf-8'))
+    print(out.decode('utf-8'))
 
-def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32, working_directory = "~"):
+def refine_2d_subjob(process_number, round=0, input_star_filename = "classes_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32):
     import time
     start_time = time.time()
     start = process_number*particles_per_process+1
@@ -212,9 +207,9 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
     input = "\n".join([
         input_stack, # Input MRCS stack
         input_star_filename, # Input Star file
-        "cycle_{0}.mrc".format(round), # Input MRC classes
+        "classes_{0}.mrc".format(round), # Input MRC classes
         "partial_classes_{0}_{1}.star".format(round+1, process_number), # Output Star file
-        "cycle_{0}.mrc".format(round+1), # Output MRC classes
+        "classes_{0}.mrc".format(round+1), # Output MRC classes
         "0", # number of classes to generate for the first time - only use when starting a NEW classification
         str(start), # First particle in stack to use
         str(stop), # Last particle in stack to use - 0 is the final.
@@ -240,16 +235,16 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         "1", # Max threads
     ])
     # if process_number=0:
-    #     log.info(input)
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)
+    #     print(input)
+    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/refine2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     end_time = time.time()
     time = end_time - start_time
-    log.info("Successful return of process number {0} out of {1} in time {2:0.1f} seconds".format(process_number+1, process_count, time))
+    print("Successful return of process number {0} out of {1} in time {2:0.1f} seconds".format(process_number+1, process_count, time))
     return(out)
 
-def merge_star_files(cycle, process_count=32, working_directory = "~"):
-    filename = "cycle_{}.star".format(cycle+1)
+def merge_star_files(cycle, process_count=32):
+    filename = "classes_{}.star".format(cycle+1)
     with open(filename, 'wb') as outfile:
         for process_number in range(process_count):
             with open("partial_classes_{}_{}.star".format(cycle+1, process_number), 'rb') as infile:
@@ -261,24 +256,24 @@ def merge_star_files(cycle, process_count=32, working_directory = "~"):
                         if not isheader(line):
                             outfile.write(line)
             subprocess.Popen("/bin/rm partial_classes_{}_{}.star".format(cycle+1, process_number), shell=True)
-    log.info("Finished writing cycle_{}.star".format(cycle+1))
-    return os.path.join(working_directory, "cycle_{}.star".format(cycle+1))
+    print("Finished writing classes_{}.star".format(cycle+1))
+    return "classes_{}.star".format(cycle+1)
 
 def merge_2d_subjob(cycle, process_count=32):
     input = "\n".join([
-        "cycle_{0}.mrc".format(cycle+1),
+        "classes_{0}.mrc".format(cycle+1),
         "dump_file_.dat",
         str(process_count)
     ])
     p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
-    log.info(out.decode('utf-8'))
+    print(out.decode('utf-8'))
     for i in range(process_count):
         p = subprocess.Popen("/bin/rm dump_file_{}.dat".format(i+1), shell=True)
 
 
 def calculate_particle_statistics(filename, class_number=50, particles_per_class=300, process_count = 32):
-    with open(filename, "r") as f:
+    with open(filename, "rb") as f:
         i=0
         j = 0
         for i,l in enumerate(f):
@@ -286,7 +281,7 @@ def calculate_particle_statistics(filename, class_number=50, particles_per_class
                 j += 1
             pass
         particle_count = i+1-j
-    print(particle_count)
+
     particles_per_process = int(ceil(particle_count / process_count))
 
     class_fraction = particles_per_class * class_number / particle_count
@@ -305,7 +300,7 @@ def append_new_particles(old_particles, new_particles, output_filename):
                     old_header_length += 1
         old_particle_count = i+1-old_header_length
         new_particles_count = 0
-        log.info(old_particle_count)
+        print(old_particle_count)
         new_header_length = 0
         with open(new_particles) as f2:
             for i,l in enumerate(f2):
@@ -313,42 +308,38 @@ def append_new_particles(old_particles, new_particles, output_filename):
                     new_header_length +=1
                     continue
                 if i == new_header_length + old_particle_count:
-                    log.info(i)
+                    print(i)
                 if i > new_header_length + old_particle_count:
                     append_file.write(l)
                     new_particles_count += 1
-        log.info(new_particles_count)
+        print(new_particles_count)
     return new_particles_count+old_particle_count
 
-# def find_previous_classes(config):
-#     file_list = glob.glob("classes_*.star")
-#     if len(file_list) > 0:
-#         previous_classes_bool=True
-#         recent_class = sorted(file_list, key=lambda f: int(f.rsplit(os.path.extsep, 1)[0].rsplit("_")[1]))[-1]
-#         cycle_number = int(recent_class.rsplit(os.path.extsep, 1)[0].rsplit("_")[1])
-#     else:
-#         previous_classes_bool = False
-#         recent_class = "classes_0.star"
-#         cycle_number = 0
-#     return previous_classes_bool, recent_class, cycle_number
+def find_previous_classes():
+    file_list = glob.glob("classes_*.star")
+    if len(file_list) > 0:
+        previous_classes_bool=True
+        recent_class = sorted(file_list, key=lambda f: int(f.rsplit(os.path.extsep, 1)[0].rsplit("_")[1]))[-1]
+        cycle_number = int(recent_class.rsplit(os.path.extsep, 1)[0].rsplit("_")[1])
+    else:
+        previous_classes_bool = False
+        recent_class = "classes_0.star"
+        cycle_number = 0
+    return previous_classes_bool, recent_class, cycle_number
 
 
-def generate_star_file(stack_label, working_directory, previous_classes_bool=False, merge_star=True, recent_class = "cycle_0", start_cycle_number = 0):
+def generate_star_file(stack_label, previous_classes_bool=False, recent_class = "classes_0.star"):
     """Wrapper logic to either append particles or generate a whole new class.
     Uses find_previous_classes and append_new_particles and import_new_particles to do all the heavy lifting."""
-    star_file = os.path.join(working_directory, "{}.star".format(stack_label))
-    if previous_classes_bool and not merge_star:
-        log.info("Previous classes will not be used, and a new star will be written at cycle_{}.star".format(start_cycle_number))
-        new_star_file = os.path.join(working_directory, "cycle_{}.star".format(start_cycle_number))
-        shutil.copy(star_file, new_star_file)
-    elif previous_classes_bool:
-        log.info("It looks like previous jobs have been run in this directory. The most recent output class is: {}.star".format(recent_class))
-        new_star_file = os.path.join(working_directory,"{}_appended.star".format(recent_class))
-        log.info("Instead of cycle_0.star, the new particles will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
-        total_particles = append_new_particles(old_particles=os.path.join(working_directory,"{}.star".format(recent_class)), new_particles=star_file, output_filename = new_star_file)
+    star_file = "{}.star".format(stack_label)
+    if previous_classes_bool:
+        print("It looks like previous jobs have been run in this directory. The most recent output class is: {}".format(recent_class))
+        new_star_file = os.path.splitext(recent_class)[0]+"_appended.star"
+        print("Instead of classes_0.star, the new particles will be appended to the end of that par file and saved as {}".format(new_star_file))
+        total_particles = append_new_particles(old_particles=recent_class, new_particles=star_file, output_filename = new_star_file)
     else:
-        log.info("No previous classes were found. A new star file will be generated at cycle_0.star")
-        new_star_file = os.path.join(working_directory,"cycle_0.star")
+        print("No previous classes were found. A new par file will be generated at classes_0.star")
+        new_star_file = "classes_0.star"
         shutil.copy(star_file, new_star_file)
     return new_star_file
 
@@ -357,8 +348,8 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
 
 
 if __name__=="__main__":
-    log.info("This is a function library and should not be called directly.")
-    # log.info("Testing particle import with streaming")
+    print("This is a function library and should not be called directly.")
+    # print("Testing particle import with streaming")
     # stack_label="streaming_combine"
     # warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
     # warp_star_filename = "allparticles_GenentechNet2Mask_20190627.star"
