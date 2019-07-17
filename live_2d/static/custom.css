@@ -11,6 +11,14 @@
   white-space: pre-wrap;
 }
 
+.btn:disabled,
+.btn[disabled]{
+  border: 1px solid #999999;
+  background-color: #cccccc;
+  color: #666666;
+}
+
+
 .terminal {
   background-color: #eee;
   overflow: auto;
