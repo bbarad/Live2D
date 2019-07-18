@@ -1,9 +1,9 @@
 <h5 class="text-center">Classification Cycle Selector</h5>
 <nav aria-label="Class Navigation" class="my-1">
-  <ul class="pagination flex-wrap justify-content-center">
-    {% for number in classification_list %}
-      <li class="page-item {% if number == int(current_gallery['number']) %}active{% end %}">
-        <a class="page-link" href="#" id="classification-link-{{ number }}">{{number}}</a>
+  <ul class="pagination pagination-sm flex-wrap justify-content-center">
+    {% for number,type in classification_list %}
+      <li class="page-item  {% if number == int(current_gallery['number']) %}active{% end %}">
+        <a class="page-link {% if type == 'random_seed' %}text-muted {% elif type=='startup' %}text-primary {%elif type=='refinement' %}text-success{%end%}" href="#" id="classification-link-{{ number }}">{{number}}</a>
       </li>
     {% end %}
   </ul>

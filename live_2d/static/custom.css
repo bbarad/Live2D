@@ -25,6 +25,28 @@
   max-height: 50vh;
   white-space: pre-wrap;
 }
+.pagination > li > a
+{
+  font-weight: bold;
+}
+.pagination > .active > a.text-success {
+    color: white !important;
+    background-color: #28a745 !important;
+    border: solid 1px #28a745 !important;
+}
+
+.pagination > .active > a.text-primary {
+    color: white !important;
+    background-color: #007bff !important;
+    border: solid 1px #007bff !important;
+}
+
+.pagination > .active > a.text-muted {
+      color: white !important;
+      background-color: #6c757d !important;
+      border: solid 1px #6c757d !important;
+}
+
 
 @media (min-width: 768px) {
 body, html {

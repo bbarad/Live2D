@@ -37,6 +37,7 @@ $(document).ready(function () {
       data_object = JSON.parse(msg.data)
       switch(data_object.type) {
         case "init":
+          console.log(data_object.settings);
           get_settings_from_server(data_object.settings);
           update_class_gallery(data_object.gallery_data);
           break;
@@ -50,7 +51,17 @@ $(document).ready(function () {
           get_settings_from_server(data_object.settings);
           break;
         case "job_started":
+          bootbox.alert("You successfully started a job");
           $("#job-status").html("Started").show();
+          // console.log(data_object.settings)
+          // get_settings_from_server(data_object.settings);
+          break;
+        case "job_finished":
+          $("#job-status").html("Stopped").show();
+          break;
+        case "kill_received":
+          $("#job-status").html("Killing").show();
+          bootbox.alert("A user has killed the current job. It will finish after the current cycle is complete.")
           break;
         case "alert":
           bootbox.alert(data_object.data);
@@ -59,20 +70,36 @@ $(document).ready(function () {
           // bootbox.alert("Didn't understand the message type "+data_object.type)
       }
     };
-    $(document).off('click',"#submit-settings");
-    $(document).on('click', '#submit-settings', function(event) {
-                  event.preventDefault();
-                  message = send_settings_to_server();
-                  ws.send(JSON.stringify(message));
-    });
+    // $(document).off('click',"#submit-settings");
+    // $(document).on('click', '#submit-settings', function(event) {
+    //               event.preventDefault();
+    //               message = send_settings_to_server();
+    //               ws.send(JSON.stringify(message));
+    // });
     $(document).off('click',"#start-job");
     $(document).on('click', '#start-job', function(event) {
                   event.preventDefault();
-                  message = {command: "start_job", data:{}};
+                  $('#start-job').popover('hide');
+                  message = send_settings_and_start_job();
+                  ws.send(JSON.stringify(message));
+
+    });
+    $(document).off('click',"#stop-job");
+    $(document).on('click', '#stop-job', function(event) {
+                  event.preventDefault();
+                  message = {"command": "kill_job", "data": "Kill this job!"}
+
                   ws.send(JSON.stringify(message));
     });
-    $(document).off('click',"[class='page-link']");
-    $(document).on("click", "[class='page-link']" ,function(event) {
+    $(document).off('click',"#update-warp-directory");
+    $(document).on('click', '#update-warp-directory', function(event) {
+                  event.preventDefault();
+                  message = {"command": "change_directory", "data": $("#warp_directory").val()}
+
+                  ws.send(JSON.stringify(message));
+    });
+    $(document).off('click',"[class*='page-link']");
+    $(document).on("click", "[class*='page-link']" ,function(event) {
       event.preventDefault();
       ws.send(JSON.stringify({command: "get_gallery", data: {gallery_number: $(event.target).html()}
       }));
@@ -89,7 +116,7 @@ $(document).ready(function () {
 
   function get_settings_from_server(settings) {
     $("#warp-directory").val(settings.warp_folder);
-    $("#neural-net").val(settings.neural_net);
+    $("#neural-net").val(settings.settings.neural_net);
     $("#pixel-size").val(settings.settings.pixel_size);
     $("#mask-radius").val(settings.settings.mask_radius);
     $("#" + settings.settings.classification_type).click();
@@ -103,11 +130,45 @@ $(document).ready(function () {
     $("#number-per-class").val(settings.settings.particles_per_class);
     $("#autocenter").prop("checked", settings.settings.autocenter);
     $("#automask").prop("checked", settings.settings.automask).show()
-    if (settings.job_running) {
-      $("#job-status").html("Started");
-    } else {
-      $("#job-status").html("Stopped");
+    switch (settings.job_status) {
+      case "running":
+        $("#job-status").html("Running");
+        $( "#update-warp-directory" ).prop( "disabled", true );
+        $('#update-warp_directory').popover('hide');
+        $( "#start-job" ).prop( "disabled", true );
+        $('#start-job').popover('hide');
+        $( "#stop-job" ).prop( "disabled", false );
+        break;
+      case "listening":
+        $("#job-status").html("Waiting for New Particles");
+        $( "#update-warp-directory" ).prop( "disabled", false );
+        $( "#start-job" ).prop( "disabled", false );
+        $( "#stop-job" ).prop( "disabled", true );
+        $('#stop-job').popover('hide');
+        break;
+      case "stopped":
+        $("#job-status").html("Ready for New Runs");
+        $( "#update-warp-directory" ).prop( "disabled", false );
+        $( "#start-job" ).prop( "disabled", false );
+        $( "#stop-job" ).prop( "disabled", true );
+        $('#stop-job').popover('hide');
+        break;
+      case "killed":
+        $("#job-status").html("Waiting to Kill");
+        $( "#update-warp-directory" ).prop( "disabled", true );
+        $("#update-warp-directory").popover('hide');
+        $( "#start-job" ).prop( "disabled", true );
+        $('#start-job').popover('hide');
+
+        $( "#stop-job" ).prop( "disabled", true );
+        $('#stop-job').popover('hide');
+
+        break;
+      default:
+        bootbox.alert("Something is wrong with the job-status setting: "+settings.job_status)
+
     }
+
     // bootbox.alert("settings: "+settings)
   }
 
@@ -116,9 +177,8 @@ $(document).ready(function () {
     return message;
   }
 
-  function send_settings_to_server() {
-    console.log("didn't send anything because we haven't done this part yet");
-    message = {command: "update_settings",
+  function send_settings_and_start_job() {
+    message = {command: "start_job",
               data: {}
     }
     // message.data.warp-folder = $('#warp-directory').val();

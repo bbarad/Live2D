@@ -1,7 +1,7 @@
 import asyncio
 import base64
 import json
-from logging import log
+import logging as log
 import os
 import sys
 
@@ -19,11 +19,21 @@ def load_config(filename="latest_run.json"):
     # print_config(config)
     return config
 
+async def change_warp_directory(folder_name):
+    return {"type": "alert", "data": "Changing warp directory is not yet supported!"}
+
 async def initialize(config = load_config()):
     message = {}
     message["type"] = "init"
     message["gallery_data"] = await generate_gallery_html(config)
     message["settings"] = await generate_settings_message(config)
+    return message
+
+async def generate_job_finished_message(config = load_config()):
+    message = {}
+    message["type"] = "settings_update"
+    message["settings"] = await generate_settings_message(config)
+    print(message)
     return message
 
 async def get_new_gallery(config, data):
@@ -40,15 +50,15 @@ def dump_json(config):
         json.dump(config, jsonfile, indent=2)
 
 async def update_settings(config, data):
-    if not data["neural_net"] == config["neural_net"]:
-        config["neural_net"] = data["neural_net"]
+    if not data["neural_net"] == config["settings"]["neural_net"]:
+        config["settings"]["neural_net"] = data["neural_net"]
         config["force_abinit"] = True
         config["next_run_new_particles"] = True
     for key in config["settings"].keys():
         try:
             config["settings"][key] = data[key]
         except:
-            print("Setting not found to update: key")
+            log.info("Setting not found to update: {}".format(key))
     dump_json(config)
     message = {}
     message["type"] = "settings_update"
@@ -59,9 +69,9 @@ async def generate_settings_message(config):
     message = {}
     message["settings"] = config["settings"]
     message["warp_folder"] = config["warp_folder"]
-    message["neural_net"] = config["neural_net"]
-    message["job_running"] = config["job_running"]
+    message["job_status"] = config["job_status"]
     message["force_abinit"] = config["force_abinit"]
+    print(message)
     return message
 
 async def initialize_new_settings(config, warp_directory):
@@ -102,4 +112,4 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
         #     entry["data"] = base64.b64encode(imgfile.read())
         current_gal["entries"].append(entry)
     string_loader = loader.load("classmodule.html")
-    return string_loader.generate(current_gallery=current_gal, classification_list = [int(i["number"]) for i in config["cycles"]]).decode("utf-8")
+    return string_loader.generate(current_gallery=current_gal, classification_list = [(int(i["number"]), i["block_type"]) for i in config["cycles"]]).decode("utf-8")
