@@ -32,6 +32,28 @@ def isheader(string):
         return True
     return False
 
+def particle_count_difference(larger_stack, smaller_stack):
+    """Quickly determine the difference in number of particles"""
+    with open(smaller_stack, "r") as f:
+        i=0
+        j = 0
+        for i,l in enumerate(f):
+            if isheader(l):
+                j += 1
+            pass
+        smaller_particle_count = i+1-j
+
+    with open(larger_stack, "r") as f:
+        i=0
+        j = 0
+        for i,l in enumerate(f):
+            if isheader(l):
+                j += 1
+            pass
+        difference = i+1-j - smaller_particle_count
+    return difference
+
+
 def make_photos(basename, working_directory):
     if not os.path.isdir(os.path.join(working_directory, "class_images")):
         os.mkdir(os.path.join(working_directory, "class_images"))
@@ -47,7 +69,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     """Function to generate new image stacks based only on the results of the first stack. Also, while I am doing it, I will write out a base star file to use for appending and/or regenerating for further class files.
     I am doing everything using a memory mapped mrc file. This does not allow easy appending, so I am writing directly to the memory map once it is created as a numpy mmap, then I am reloading as an mrcfile mmap and fixing the header."""
     log.info("=======================================")
-    print("Combining Stacks of Particles from Warp")
+    log.info("Combining Stacks of Particles from Warp")
     log.info("=======================================")
     start_time = time.time()
     starting_directory = os.getcwd()
@@ -99,20 +121,17 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
 
     os.chdir(working_directory)
     #WRITE OUT STAR FILE
-    with open("{}/{}.star".format(working_directory,stack_label),"w") as file:
+    with open(os.path.join(working_directory,"{}.star".format(stack_label)),"w") as file:
         file.write("\0\ndata_\n\0\nloop_\n")
         input = ["{} #{}".format(value, index+1) for index,value in enumerate([
         "_cisTEMPositionInStack",
         "_cisTEMAnglePsi",
-        "_cisTEMAngleTheta",
-        "_cisTEMAnglePhi",
         "_cisTEMXShift",
         "_cisTEMYShift",
         "_cisTEMDefocus1",
         "_cisTEMDefocus2",
         "_cisTEMDefocusAngle",
         "_cisTEMPhaseShift",
-        "_cisTEMImageActivity",
         "_cisTEMOccupancy",
         "_cisTEMLogP",
         "_cisTEMSigma",
@@ -126,6 +145,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         "_cisTEMBeamTiltY",
         "_cisTEMImageShiftX",
         "_cisTEMImageShiftY",
+        "_cisTEMBest2DClass",
         ])]
         file.write("\n".join(input))
         file.write("\n")
@@ -133,15 +153,12 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             row_data = [
             str(row.Index+1),
             "0.00",
-            "0.00",
-            "0.00",
             "-0.00",
             "-0.00",
             str(row.rlnDefocusU),
             str(row.rlnDefocusV),
             str(row.rlnDefocusAngle),
             "0.0",
-            "0",
             "100.0",
             "-500",
             "1.0",
@@ -155,6 +172,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             "0.0",
             "0.0",
             "0.0",
+            "0",
             ]
             file.write("\t".join(row_data))
             file.write("\n")
@@ -298,6 +316,7 @@ def calculate_particle_statistics(filename, class_number=50, particles_per_class
 def append_new_particles(old_particles, new_particles, output_filename):
     with open(output_filename, 'w') as append_file:
         old_header_length = 0
+        log.info(old_particles)
         with open(old_particles) as f:
             for i,l in enumerate(f):
                 append_file.write(l)
@@ -305,7 +324,6 @@ def append_new_particles(old_particles, new_particles, output_filename):
                     old_header_length += 1
         old_particle_count = i+1-old_header_length
         new_particles_count = 0
-        log.info(old_particle_count)
         new_header_length = 0
         with open(new_particles) as f2:
             for i,l in enumerate(f2):
@@ -317,7 +335,6 @@ def append_new_particles(old_particles, new_particles, output_filename):
                 if i > new_header_length + old_particle_count:
                     append_file.write(l)
                     new_particles_count += 1
-        log.info(new_particles_count)
     return new_particles_count+old_particle_count
 
 # def find_previous_classes(config):
@@ -337,6 +354,7 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
     """Wrapper logic to either append particles or generate a whole new class.
     Uses find_previous_classes and append_new_particles and import_new_particles to do all the heavy lifting."""
     star_file = os.path.join(working_directory, "{}.star".format(stack_label))
+    print (star_file)
     if previous_classes_bool and not merge_star:
         log.info("Previous classes will not be used, and a new star will be written at cycle_{}.star".format(start_cycle_number))
         new_star_file = os.path.join(working_directory, "cycle_{}.star".format(start_cycle_number))
