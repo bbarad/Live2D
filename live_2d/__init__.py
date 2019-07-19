@@ -16,7 +16,7 @@ from tornado.web import Application, RequestHandler, StaticFileHandler
 from tornado.websocket import WebSocketHandler
 import uvloop
 
-from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory
+from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message
 import processing_functions
 
 import socket_handlers
@@ -120,21 +120,28 @@ async def tail_log(config, clients = None, line_count = 1000):
         client.write_message(console_message)
 
 async def listen_for_particles(config, clients):
+    print("Listening for Particles?")
     if not config["job_status"] == "listening":
+        print("not set to listening")
         config["counting"] = False
         return
     if config["counting"]:
+        print("listen job hasn't returned yet...")
         return
     config["counting"] = True
     warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
     current_particles_filename = os.path.join(config["working_directory"], "combined_stack.star")
     new_particle_count = processing_functions.particle_count_difference(warp_stack_filename, current_particles_filename)
     log.info(f"New Particles Detected: {new_particle_count}")
-    if new_particle_count > config["settings"]["particle_count_update"]:
+    print(new_particle_count)
+    if new_particle_count > int(config["settings"]["particle_count_update"]):
+
         config["job_status"] = "running"
-        return_data = await update_settings(config, data)
+        message = {}
+        message["type"] = "settings_update"
+        message["settings"] = await generate_settings_message(config)
         for con in clients:
-            con.write_message(return_data)
+            con.write_message(message)
         loop = tornado.ioloop.IOLoop.current()
         loop.add_callback(execute_job_loop, config)
     config["counting"] = False
@@ -295,7 +302,7 @@ def main():
     app.listen(options.port)
     print('Listening on http://localhost:%i' % options.port)
     # tailed_callback = tornado.ioloop.PeriodicCallback(lambda: tail_log(config, clients), 5000)
-    listening_callback = tornado.ioloop.PeriodicCallback(lambda: listen_for_particles(config, clients), 60000)
+    listening_callback = tornado.ioloop.PeriodicCallback(lambda: listen_for_particles(config, clients), 120000)
     # tailed_callback.start()
     listening_callback.start()
 

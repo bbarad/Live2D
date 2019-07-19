@@ -43,14 +43,14 @@ def particle_count_difference(larger_stack, smaller_stack):
             pass
         smaller_particle_count = i+1-j
 
-    with open(larger_stack, "r") as f:
-        i=0
-        j = 0
-        for i,l in enumerate(f):
+    with open(larger_stack, "r") as f2:
+        i2=0
+        j2 = 0
+        for i2,l2 in enumerate(f2):
             if isheader(l):
-                j += 1
+                j2 += 1
             pass
-        difference = i+1-j - smaller_particle_count
+        difference = i2+1-j2 - smaller_particle_count
     return difference
 
 
