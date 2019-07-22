@@ -193,7 +193,8 @@ async def execute_job_loop(config):
         await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = working_directory))
 
         await loop.run_in_executor(executor, processing_functions.make_photos,"cycle_{}".format(start_cycle_number),working_directory)
-        new_cycle = {"name": "cycle_{}".format(start_cycle_number), "number": start_cycle_number, "settings": config["settings"], "high_res_limit": int(config["settings"]["high_res_initial"]), "block_type": "random_seed", "cycle_number_in_block": 1, "time": str(datetime.datetime.now()), "process_count": 1, "particle_count": total_particles}
+        classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
+        new_cycle = {"name": "cycle_{}".format(start_cycle_number), "number": start_cycle_number, "settings": config["settings"], "high_res_limit": int(config["settings"]["high_res_initial"]), "block_type": "random_seed", "cycle_number_in_block": 1, "time": str(datetime.datetime.now()), "process_count": 1, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class}
         config["cycles"].append(new_cycle)
         dump_json(config)
         return_data = await get_new_gallery(config, {"gallery_number": start_cycle_number})
@@ -230,7 +231,8 @@ async def execute_job_loop(config):
             await loop.run_in_executor(executor,partial(processing_functions.merge_2d_subjob,filename_number, process_count=process_count))
             await loop.run_in_executor(executor,processing_functions.make_photos,"cycle_{}".format(filename_number+1),working_directory)
             new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = config["working_directory"]))
-            new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "startup", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles}
+            classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
+            new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "startup", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class":classified_count_per_class}
             config["cycles"].append(new_cycle)
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
@@ -268,7 +270,8 @@ async def execute_job_loop(config):
         await loop.run_in_executor(executor, partial(processing_functions.merge_2d_subjob, filename_number, process_count=int(config["process_count"])))
         await loop.run_in_executor(executor, processing_functions.make_photos, "cycle_{}".format(filename_number+1),config["working_directory"])
         new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = working_directory))
-        new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "refinement", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles}
+        classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
+        new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "refinement", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class}
         config["cycles"].append(new_cycle)
         dump_json(config)
         return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
