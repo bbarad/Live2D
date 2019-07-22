@@ -6,9 +6,7 @@ $(document).ready(function () {
   $('[rel="popover"]').popover(
     {container: 'body'}
   );
-  $('[rel="tooltip"]').tooltip(
-    {container: 'body'}
-  );
+
 
   if(window.WebSocket) {
     start_websocket();
@@ -98,19 +96,28 @@ $(document).ready(function () {
 
                   ws.send(JSON.stringify(message));
     });
+
     $(document).off('click',"[class*='page-link']");
     $(document).on("click", "[class*='page-link']" ,function(event) {
       event.preventDefault();
-      ws.send(JSON.stringify({command: "get_gallery", data: {gallery_number: $(event.target).html()}
+      ws.send(JSON.stringify({command: "get_gallery", data: {gallery_number: $(event.target).attr("value")}
       }));
     });
-  }
 
-  $(document).off('click',"[data-toggle='lightbox']");
-  $(document).on('click', '[data-toggle="lightbox"]', function(event) {
-                event.preventDefault();
-                $(this).ekkoLightbox();
-  });
+    $(document).off('change', '#class-selector');
+    $(document).on('change', '#class-selector', function() {
+      event.preventDefault();
+      console.log($(this).val());
+      ws.send(JSON.stringify({command: "get_gallery", data: {gallery_number: $(this).val()}
+      }));
+    });
+
+    $(document).off('click',"[data-toggle='lightbox']");
+    $(document).on('click', '[data-toggle="lightbox"]', function(event) {
+                    event.preventDefault();
+                    $(this).ekkoLightbox();
+    });
+  }
 
 
 
@@ -204,9 +211,36 @@ $(document).ready(function () {
   }
 
   function update_class_gallery(data) {
+    $('nav *').tooltip('hide')
     // bootbox.alert("gallery data "+data)
     $("#class-gallery").html(data);
+    $('[data-toggle="tooltip"]').tooltip(
+      {container: 'body',
+      placement: 'bottom'}
+    );
+    // adjust_galleries_shown();
   }
+
+  // function adjust_galleries_shown() {
+  //   curgal = parseInt($(".pagination > li.active").text(), 10);
+  //   console.log(curgal);
+  //   gal_len = $("[class*='page-item']").length;
+  //   console.log(gal_len);
+  //   $.each($("[class*='page-item']"), function (index, value) {
+  //     $(this).hide();
+  //     if ([0,1,2].includes(index)) {
+  //       $(this).show();
+  //     }
+  //     else if ([gal_len-1, gal_len-2, gal_len-3].includes(index)) {
+  //       $(this).show();
+  //     }
+  //     else if (Math.abs(parseInt($(this).text(),10) - curgal) < 4) {
+  //       $(this).show();
+  //     }
+  //   });
+  // }
+
+
 })
 
 function set_vars(uri_from_server){

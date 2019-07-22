@@ -92,6 +92,10 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
                 current_gal["high_res_limit"] = cycle["high_res_limit"]
                 current_gal["block_type"] = cycle["block_type"]
                 current_gal["time"] = cycle["time"]
+                try:
+                    current_gal["particle_count_per_class"] = cycle["particle_count_per_class"]
+                except:
+                    current_gal["particle_count_per_class"] = ["Not Recorded"]*(current_gal["class_count"]+1)
     # Catch nonexistent number or non-supplied number and return the latest class.
     if not "number" in current_gal:
         cycle = config["cycles"][-1]
@@ -102,14 +106,18 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
         current_gal["high_res_limit"] = cycle["high_res_limit"]
         current_gal["block_type"] = cycle["block_type"]
         current_gal["time"] = cycle["time"]
+        try:
+            current_gal["particle_count_per_class"] = cycle["particle_count_per_class"]
+        except:
+            current_gal["particle_count_per_class"] = ["Not Recorded"]*(current_gal["class_count"]+1)
     current_gal["entries"] = []
     for i in range(current_gal["class_count"]):
         entry = {}
         entry["name"] = "Class {}".format(i+1)
         entry["url"] = os.path.join("/gallery/", current_gal["name"], "{}.png".format(i+1))
-        # filename = os.path.join(config["working_directory"],"class_images", current_gal["name"], "{}.png".format(i+1))
-        # with open(filename, "rb") as imgfile:
-        #     entry["data"] = base64.b64encode(imgfile.read())
+
+        entry["count"] = current_gal["particle_count_per_class"][i+1]
+
         current_gal["entries"].append(entry)
     string_loader = loader.load("classmodule.html")
-    return string_loader.generate(current_gallery=current_gal, classification_list = [(int(i["number"]), i["block_type"]) for i in config["cycles"]]).decode("utf-8")
+    return string_loader.generate(current_gallery=current_gal, classification_list = [(int(i["number"]), i["block_type"], i["particle_count"]) for i in config["cycles"]]).decode("utf-8")
