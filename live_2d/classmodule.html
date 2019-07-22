@@ -7,7 +7,7 @@
 <nav aria-label="Class Navigation" class="my-1">
   <ul class="pagination flex-wrap justify-content-center">
     <li class="page-item {% if classification_list[0][0] == int(current_gallery['number']) %}disabled{% end %}">
-      <a class="page-link" href="#" value={{classification_list[0][0]}} id="classification-link-{{ classification_list[0][0] }}" data-toggle="tooltip" data-trigger='hover' data-placement="bottom" Title="Class {{classification_list[0][0]}} - {{classification_list[0][2]}} Particles">First</a>
+      <a class="page-link" href="#" value={{classification_list[0][0]}} id="classification-link-{{ classification_list[0][0] }}" data-toggle="tooltip" data-trigger='hover' data-placement="bottom" Title="Cycle {{classification_list[0][0]}} - {{classification_list[0][2]}} Particles">First</a>
     </li>
       {% for number,type, particle_count in classification_list %}
         {% if abs(number - int(current_gallery['number'])) < 3 %}
@@ -17,7 +17,7 @@
         {% end %}
       {% end %}
       <li class="page-item {% if classification_list[-1][0] == int(current_gallery['number']) %}disabled{% end %}">
-        <a class="page-link" href="#" value={{classification_list[-1][0]}} id="classification-link-{{ classification_list[-1][0] }}" data-toggle="tooltip" data-trigger='hover' data-placement="bottom" Title="Class {{classification_list[-1][0]}} - {{classification_list[-1][2]}} Particles">Latest</a>
+        <a class="page-link" href="#" value={{classification_list[-1][0]}} id="classification-link-{{ classification_list[-1][0] }}" data-toggle="tooltip" data-trigger='hover' data-placement="bottom" Title="Cycle {{classification_list[-1][0]}} - {{classification_list[-1][2]}} Particles">Latest</a>
       </li>
 
   </ul>
