@@ -130,13 +130,26 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     new_offset=0
     new_filenames = stacks_filenames[prev_par:].unique()
     for index, filename in enumerate(new_filenames):
-        with mrcfile.mmap(filename, "r", permissive=True) as partial_mrcs:
-            x = partial_mrcs.header.nx
-            y = partial_mrcs.header.ny
-            z = partial_mrcs.header.nz
-            log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
-            mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
-            new_offset = new_offset+z
+        # try:
+            with mrcfile.mmap(filename, "r+", permissive=True) as partial_mrcs:
+                try:
+                    x = partial_mrcs.header.nx
+                    y = partial_mrcs.header.ny
+                    z = partial_mrcs.header.nz
+                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                    mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
+                except: # If the file size is wrong, don't just assume its gonna be wrong...
+                    info.warn("Particle stack header didn't match data")
+                    partial_mrcs.update_header_from_data()
+                    x = partial_mrcs.header.nx
+                    y = partial_mrcs.header.ny
+                    z = partial_mrcs.header.nz
+                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                    mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
+                new_offset = new_offset+z
+        # except:
+        #     log.error(f"Failed to import {filename} (number {index+1} of {len(new_filenames)}) - will not import any more particles")
+        #     break
     mrcfile_raw.flush()
     del mrcfile_raw
     # FIX THE HEADER
