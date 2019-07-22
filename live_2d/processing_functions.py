@@ -15,7 +15,10 @@ from pyem import star
 import scipy.misc
 import sys
 
+
+
 def isheader(string):
+    # print(string)
     try:
         string = string.decode()
     except AttributeError:
@@ -29,8 +32,29 @@ def isheader(string):
     if string.startswith("loop_"):
         return True
     if string.isspace():
+        print(string)
         return True
     return False
+
+def count_particles_per_class(star_filename):
+    """Generate a list with the number of counts for a give class in that index.
+    Adapted from https://stackoverflow.com/questions/46759464/fast-way-to-count-occurrences-of-all-values-in-a-pandas-dataframe"""
+    with open(star_filename) as f:
+        pos = 0
+        cur_line = f.readline()
+        while isheader(cur_line):
+            pos = f.tell()
+            cur_line = f.readline()
+        f.seek(pos)
+        df = pandas.read_csv(f, delim_whitespace=True)
+        class_row = df.iloc[:,-1]
+        class_counter = np.bincount(class_row.ravel())
+        print(class_counter)
+        print(len(class_counter))
+    return class_counter
+
+
+
 
 def particle_count_difference(larger_stack, smaller_stack):
     """Quickly determine the difference in number of particles"""
