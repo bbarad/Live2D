@@ -89,6 +89,7 @@ def make_photos(basename, working_directory):
     with mrcfile.open("{}.mrc".format(basename), "r") as stack:
         for index,item in enumerate(stack.data):
             scipy.misc.imsave(os.path.join(photo_dir,"{}.png".format(index+1)), item)
+    log.info(f"Exported class averages to web-friendly images stored in {photo_dir}")
     return photo_dir
 
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory, new_net=False):
@@ -106,11 +107,11 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         previous_file = False
     os.chdir(warp_folder)
     total_particles = star.parse_star(warp_star_filename)
-    log.info(len(total_particles))
     stacks_filenames = total_particles["rlnImageName"].str.rsplit("@").str.get(-1)
 
     # MAKE PRELIMINARY STACK IF ITS NOT THERE
     if not previous_file:
+        print("No previous particle stack is being appended.")
         print("Copying first mrcs file to generate seed for combined stack")
         shutil.copy(stacks_filenames[0], combined_filename)
 
@@ -160,6 +161,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
 
     os.chdir(working_directory)
     #WRITE OUT STAR FILE
+    log.info("Writing out new star file for combined stacks.")
     with open(os.path.join(working_directory,"{}.star".format(stack_label)),"w") as file:
         file.write(" \ndata_\n \nloop_\n")
         input = ["{} #{}".format(value, index+1) for index,value in enumerate([
@@ -217,14 +219,11 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             file.write("\n")
     os.chdir(starting_directory)
     end_time = time.time()
-    log.info("Total Time: {}s".format(end_time - start_time))
+    log.info("Total Time To Import New Particles: {}s".format(end_time - start_time))
     return len(total_particles)
 
 
 def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40, new_star_file = "cycle_0.star", working_directory = "~"):
-    log.info("====================")
-    log.info("Preparing 2D Classes")
-    log.info("====================")
     input = "\n".join([
         input_stack, # Input MRCS stack
         new_star_file, # Input Star file
@@ -327,7 +326,7 @@ def merge_2d_subjob(cycle, process_count=32):
         "dump_file_.dat",
         str(process_count)
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r814/bin/merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     log.info(out.decode('utf-8'))
     for i in range(process_count):
@@ -397,12 +396,12 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
         new_star_file = os.path.join(working_directory, "cycle_{}.star".format(start_cycle_number))
         shutil.copy(star_file, new_star_file)
     elif previous_classes_bool:
-        log.info("It looks like previous jobs have been run in this directory. The most recent output class is: {}.star".format(recent_class))
+        log.info("It looks like previous jobs have been run in this directory. The most recent output star file is: {}.star".format(recent_class))
         new_star_file = os.path.join(working_directory,"{}_appended.star".format(recent_class))
-        log.info("Instead of cycle_0.star, the new particles will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
+        log.info("Instead of cycle_0.star, the new particle information will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
         total_particles = append_new_particles(old_particles=os.path.join(working_directory,"{}.star".format(recent_class)), new_particles=star_file, output_filename = new_star_file)
     else:
-        log.info("No previous classes were found. A new star file will be generated at cycle_0.star")
+        log.info("No previous classification cycles were found. A new classification star file will be generated at cycle_0.star")
         new_star_file = os.path.join(working_directory,"cycle_0.star")
         shutil.copy(star_file, new_star_file)
     return new_star_file
