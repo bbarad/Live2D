@@ -1,13 +1,33 @@
 import asyncio
 import base64
 import json
-import logging as log
+import logging
 import os
 import sys
 
 import tornado.template
 loader = tornado.template.Loader(".")
 # import processing_functions
+log = logging.getLogger("live_2d")
+def initialize_logger(config):
+    log = logging.getLogger("live_2d")
+    for handler in log.handlers:
+        log.removeHandler(handler)
+    # c_handler = logging.StreamHandler()
+    # c_format=logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    # c_handler.setFormatter(c_format)
+    # c_handler.setLevel(logging.DEBUG)
+
+    filename = os.path.join(config["working_directory"], config["logfile"])
+    f_handler = logging.FileHandler(filename, mode='a')
+    f_format = logging.Formatter('%(message)s')
+    f_handler.setFormatter(f_format)
+    f_handler.setLevel(logging.INFO)
+
+    # log.addHandler(c_handler)
+    log.addHandler(f_handler)
+
+    return log
 
 # Configuration of live processing settings
 def print_config(config):
@@ -19,8 +39,57 @@ def load_config(filename="latest_run.json"):
     # print_config(config)
     return config
 
-async def change_warp_directory(folder_name):
-    return {"type": "alert", "data": "Changing warp directory is not yet supported!"}
+def new_config(warp_folder, working_directory):
+    # may want to change this to a template file processed by tornado eventually, easier to keep up to date.
+    config = {
+    "warp_folder": warp_folder,
+    "working_directory": working_directory,
+    "logfile": "logfile.txt",
+    "process_count": 32,
+    "settings": {
+        "neural_net": "GenentechNet2Mask_20190627",
+        "pixel_size": "1.2007",
+        "mask_radius": "150",
+        "high_res_initial": "40",
+        "high_res_final": "8",
+        "run_count_startup": "15",
+        "run_count_refine": "5",
+        "classification_type": "abinit",
+        "particle_count_initial": "50000",
+        "particle_count_update": "50000",
+        "autocenter": True,
+        "automask": False,
+        "class_number": "50",
+        "particles_per_class": "300"
+    },
+    "cycles": [],
+    "counting": False,
+    "job_status": "stopped",
+    "force_abinit": False,
+    "next_run_new_particles": False,
+    "kill_job": False
+    }
+    return config
+
+def change_warp_directory(warp_folder, config):
+    if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
+        log.warn("It doesn't look like there is a warp job set up to run in this folder: {}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder.")
+        return False
+    working_directory = os.path.join(warp_folder, "classification")
+    if not os.path.isdir(working_directory):
+        os.mkdir(working_directory)
+    configfile = os.path.join(working_directory, "latest_run.json")
+    if os.path.isfile(configfile):
+        log.info("Detected an existing config file in that warp folder, so we're loading that one.")
+        new_config = load_config(configfile)
+        new_config["job_status"] = "stopped"
+        new_config["kill_job"] = False
+    else:
+        log.info("Detected an existing config file in that warp folder, so we're loading that one.")
+        new_config = new_config(warp_folder)
+    config.update(new_config)
+    return True
+
 
 async def initialize(config = load_config()):
     message = {}

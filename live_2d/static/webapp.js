@@ -92,8 +92,8 @@ $(document).ready(function () {
     $(document).off('click',"#update-warp-directory");
     $(document).on('click', '#update-warp-directory', function(event) {
                   event.preventDefault();
-                  message = {"command": "change_directory", "data": $("#warp_directory").val()}
-
+                  message = {"command": "change_directory", "data": $("#warp-directory").val()};
+                  console.log(message);
                   ws.send(JSON.stringify(message));
     });
 
