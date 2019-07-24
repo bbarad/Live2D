@@ -1,7 +1,7 @@
 import asyncio
 import glob
 import itertools
-import logging as log
+import logging
 from math import ceil
 import os
 import shutil
@@ -15,6 +15,7 @@ from pyem import star
 import scipy.misc
 import sys
 
+log = logging.getLogger("live_2d")
 
 
 def isheader(string):
@@ -32,7 +33,6 @@ def isheader(string):
     if string.startswith("loop_"):
         return True
     if string.isspace():
-        print(string)
         return True
     return False
 
@@ -48,10 +48,12 @@ def count_particles_per_class(star_filename):
         f.seek(pos)
         df = pandas.read_csv(f, delim_whitespace=True)
         class_row = df.iloc[:,-1]
-        class_counter = np.bincount(class_row.ravel())
-        print(class_counter)
-        print(len(class_counter))
-    return class_counter
+        cr = class_row.ravel()
+        cr[cr<0] = 0
+        class_counter = np.bincount(cr)
+        class_counter_list = [int(i) for i in class_counter]
+        log.info(f"Particles per class: {class_counter_list}")
+    return class_counter_list
 
 
 
@@ -136,16 +138,16 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
                     x = partial_mrcs.header.nx
                     y = partial_mrcs.header.ny
                     z = partial_mrcs.header.nz
-                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                     mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
-                except: # If the file size is wrong, don't just assume its gonna be wrong...
-                    info.warn("Particle stack header didn't match data")
+                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                except Exception: # If the file size is wrong, don't just assume its gonna be wrong...
+                    log.exception("Particle stack header didn't match data - Trying to reformat and continue")
                     partial_mrcs.update_header_from_data()
                     x = partial_mrcs.header.nx
                     y = partial_mrcs.header.ny
                     z = partial_mrcs.header.nz
-                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                     mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
+                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                 new_offset = new_offset+z
         # except:
         #     log.error(f"Failed to import {filename} (number {index+1} of {len(new_filenames)}) - will not import any more particles")
@@ -159,7 +161,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     os.chdir(working_directory)
     #WRITE OUT STAR FILE
     with open(os.path.join(working_directory,"{}.star".format(stack_label)),"w") as file:
-        file.write("\0\ndata_\n\0\nloop_\n")
+        file.write(" \ndata_\n \nloop_\n")
         input = ["{} #{}".format(value, index+1) for index,value in enumerate([
         "_cisTEMPositionInStack",
         "_cisTEMAnglePsi",
@@ -253,7 +255,7 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
         "No.dat", # Datfilename,
         "1", # max threads
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/refine2d", stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r814/bin/refine2d", stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     log.info(out.decode('utf-8'))
 
@@ -296,7 +298,7 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
     ])
     # if process_number=0:
     #     log.info(input)
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r814/bin/refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     end_time = time.time()
     time = end_time - start_time
@@ -325,7 +327,7 @@ def merge_2d_subjob(cycle, process_count=32):
         "dump_file_.dat",
         str(process_count)
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r813/bin/merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r814/bin/merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     log.info(out.decode('utf-8'))
     for i in range(process_count):
@@ -341,7 +343,6 @@ def calculate_particle_statistics(filename, class_number=50, particles_per_class
                 j += 1
             pass
         particle_count = i+1-j
-    print(particle_count)
     particles_per_process = int(ceil(particle_count / process_count))
 
     class_fraction = particles_per_class * class_number / particle_count
@@ -391,7 +392,6 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
     """Wrapper logic to either append particles or generate a whole new class.
     Uses find_previous_classes and append_new_particles and import_new_particles to do all the heavy lifting."""
     star_file = os.path.join(working_directory, "{}.star".format(stack_label))
-    print (star_file)
     if previous_classes_bool and not merge_star:
         log.info("Previous classes will not be used, and a new star will be written at cycle_{}.star".format(start_cycle_number))
         new_star_file = os.path.join(working_directory, "cycle_{}.star".format(start_cycle_number))
@@ -413,6 +413,8 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
 
 if __name__=="__main__":
     log.info("This is a function library and should not be called directly.")
+    data = count_particles_per_class('/gne/data/cryoem/DATA_COLLECTIONS/WARP/190718_Nav1.7_Krios_grid_001746_session_000775/classification/cycle_258.star')
+    print(data)
     # log.info("Testing particle import with streaming")
     # stack_label="streaming_combine"
     # warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
