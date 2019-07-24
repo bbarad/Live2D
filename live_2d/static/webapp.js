@@ -76,26 +76,38 @@ $(document).ready(function () {
     // });
     $(document).off('click',"#start-job");
     $(document).on('click', '#start-job', function(event) {
-                  event.preventDefault();
-                  $('#start-job').popover('hide');
-                  message = send_settings_and_start_job();
-                  ws.send(JSON.stringify(message));
-
+      event.preventDefault();
+      $('#start-job').popover('hide');
+      message = send_settings_and_start_job();
+      ws.send(JSON.stringify(message));
     });
+
     $(document).off('click',"#stop-job");
     $(document).on('click', '#stop-job', function(event) {
-                  event.preventDefault();
-                  message = {"command": "kill_job", "data": "Kill this job!"}
-
-                  ws.send(JSON.stringify(message));
+      event.preventDefault();
+      message = {"command": "kill_job", "data": "Kill this job!"};
+      ws.send(JSON.stringify(message));
     });
+
     $(document).off('click',"#update-warp-directory");
     $(document).on('click', '#update-warp-directory', function(event) {
-                  event.preventDefault();
-                  message = {"command": "change_directory", "data": $("#warp-directory").val()};
-                  console.log(message);
-                  ws.send(JSON.stringify(message));
+      bootbox.prompt({
+        title: "Enter the full path for your new Warp directory.",
+        closeButton: false,
+        callback: function(result) {
+          message = {"command": "change_directory", "data": result}
+          ws.send(JSON.stringify(message));
+        }
+      });
+                  // message = {"command": "change_directory", "data": $("#warp-directory").val()};
+                  // console.log(message);
     });
+
+    $(document).off('click',"#abinit");
+    $(document).on('click', '#abinit', function(event) {
+      console.log("Clicked abinit");
+    });
+
 
     $(document).off('click',"[class*='page-link']");
     $(document).on("click", "[class*='page-link']" ,function(event) {
@@ -122,7 +134,7 @@ $(document).ready(function () {
 
 
   function get_settings_from_server(settings) {
-    $("#warp-directory").val(settings.warp_folder);
+    $("#warp-directory").html(settings.warp_folder.split("/").pop());
     $("#neural-net").val(settings.settings.neural_net);
     $("#pixel-size").val(settings.settings.pixel_size);
     $("#mask-radius").val(settings.settings.mask_radius);
@@ -144,12 +156,16 @@ $(document).ready(function () {
         $('#update-warp_directory').popover('hide');
         $( "#start-job" ).prop( "disabled", true );
         $('#start-job').popover('hide');
+        $( "#start-listening" ).prop( "disabled", true );
+        $('#start-listening').popover("hide");
         $( "#stop-job" ).prop( "disabled", false );
         break;
       case "listening":
         $("#job-status").html("Waiting for New Particles");
         $( "#update-warp-directory" ).prop( "disabled", false );
         $( "#start-job" ).prop( "disabled", false );
+        $( "#start-listening" ).prop( "disabled", true );
+        $('#start-listening').popover("hide");
         $( "#stop-job" ).prop( "disabled", true );
         $('#stop-job').popover('hide');
         break;
@@ -166,7 +182,8 @@ $(document).ready(function () {
         $("#update-warp-directory").popover('hide');
         $( "#start-job" ).prop( "disabled", true );
         $('#start-job').popover('hide');
-
+        $( "#start-listening" ).prop( "disabled", true );
+        $('#start-listening').popover("hide");
         $( "#stop-job" ).prop( "disabled", true );
         $('#stop-job').popover('hide');
 
