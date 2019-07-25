@@ -1,6 +1,7 @@
 
 var uri=""
 
+
 // Display Utilities go below here - just random stuff to make pretty things happen.
 $(document).ready(function () {
   $('[rel="popover"]').popover(
@@ -46,13 +47,13 @@ $(document).ready(function () {
           update_class_gallery(data_object.gallery_data);
           break;
         case "settings_update":
+          console.log("got settings update");
+          console.log(data_object.settings);
           get_settings_from_server(data_object.settings);
           break;
         case "job_started":
           bootbox.alert("You successfully started a job");
           $("#job-status").html("Started").show();
-          // console.log(data_object.settings)
-          // get_settings_from_server(data_object.settings);
           break;
         case "job_finished":
           $("#job-status").html("Stopped").show();
@@ -60,6 +61,15 @@ $(document).ready(function () {
         case "kill_received":
           $("#job-status").html("Killing").show();
           bootbox.alert("A user has killed the current job. It will finish after the current cycle is complete.")
+          $("#job-status").html("Waiting to Kill");
+          $( "#update-warp-directory" ).prop( "disabled", true );
+          $("#update-warp-directory").popover('hide');
+          $( "#start-job" ).prop( "disabled", true );
+          $('#start-job').popover('hide');
+          $( "#start-listening" ).prop( "disabled", true );
+          $('#start-listening').popover("hide");
+          $( "#stop-job" ).prop( "disabled", true );
+          $('#stop-job').popover('hide');
           break;
         case "alert":
           bootbox.alert(data_object.data);
@@ -79,6 +89,13 @@ $(document).ready(function () {
       event.preventDefault();
       $('#start-job').popover('hide');
       message = send_settings_and_start_job();
+      ws.send(JSON.stringify(message));
+    });
+
+    $(document).off('click',"#start-listening");
+    $(document).on('click', '#start-listening', function(event) {
+      event.preventDefault();
+      message = send_settings_and_start_listening();
       ws.send(JSON.stringify(message));
     });
 
@@ -103,11 +120,6 @@ $(document).ready(function () {
                   // console.log(message);
     });
 
-    $(document).off('click',"#abinit");
-    $(document).on('click', '#abinit', function(event) {
-      console.log("Clicked abinit");
-    });
-
 
     $(document).off('click',"[class*='page-link']");
     $(document).on("click", "[class*='page-link']" ,function(event) {
@@ -130,10 +142,29 @@ $(document).ready(function () {
                     $(this).ekkoLightbox();
     });
   }
-
+  function prepare_settings() {
+    data = {}
+    data.neural_net = $("#neural-net").val();
+    data.pixel_size = $("#pixel-size").val();
+    data.mask_radius=$("#mask-radius").val();
+    data.classification_type = $("input[name='classification-type']:checked").val();
+    data.high_res_initial =$("#high-res-initial").val();
+    data.high_res_final = $("#high-res-final").val();
+    data.run_count_startup = $("#startup-cycle-count").val();
+    data.run_count_refine = $("#refinement-cycle-count").val();
+    data.particle_count_initial = $("#start-count").val();
+    data.particle_count_update = $("#update-count").val();
+    data.class_number = $("#number-classes").val();
+    data.particles_per_class = $("#number-per-class").val();
+    data.automask = $("#automask").prop("checked");
+    data.autocenter = $("#autocenter").prop("checked");
+    return data;
+  }
 
 
   function get_settings_from_server(settings) {
+    console.log("Updating Frontend Settings")
+    console.log(settings)
     $("#warp-directory").html(settings.warp_folder.split("/").pop());
     $("#neural-net").val(settings.settings.neural_net);
     $("#pixel-size").val(settings.settings.pixel_size);
@@ -148,7 +179,7 @@ $(document).ready(function () {
     $("#number-classes").val(settings.settings.class_number);
     $("#number-per-class").val(settings.settings.particles_per_class);
     $("#autocenter").prop("checked", settings.settings.autocenter);
-    $("#automask").prop("checked", settings.settings.automask).show()
+    $("#automask").prop("checked", settings.settings.automask).show();
     switch (settings.job_status) {
       case "running":
         $("#job-status").html("Running");
@@ -159,22 +190,27 @@ $(document).ready(function () {
         $( "#start-listening" ).prop( "disabled", true );
         $('#start-listening').popover("hide");
         $( "#stop-job" ).prop( "disabled", false );
+        disable_form();
         break;
       case "listening":
         $("#job-status").html("Waiting for New Particles");
-        $( "#update-warp-directory" ).prop( "disabled", false );
+        $( "#update-warp-directory" ).prop( "disabled", true );
         $( "#start-job" ).prop( "disabled", false );
         $( "#start-listening" ).prop( "disabled", true );
         $('#start-listening').popover("hide");
-        $( "#stop-job" ).prop( "disabled", true );
-        $('#stop-job').popover('hide');
+        $( "#stop-job" ).prop( "disabled", false );
+        enable_form();
+        // $('#stop-job').popover('hide');
         break;
       case "stopped":
         $("#job-status").html("Ready for New Runs");
         $( "#update-warp-directory" ).prop( "disabled", false );
+        $("#update-warp-directory").popover("hide");
         $( "#start-job" ).prop( "disabled", false );
+        $( "#start-listening" ).prop( "disabled", false );
         $( "#stop-job" ).prop( "disabled", true );
         $('#stop-job').popover('hide');
+        enable_form();
         break;
       case "killed":
         $("#job-status").html("Waiting to Kill");
@@ -186,7 +222,7 @@ $(document).ready(function () {
         $('#start-listening').popover("hide");
         $( "#stop-job" ).prop( "disabled", true );
         $('#stop-job').popover('hide');
-
+        disable_form();
         break;
       default:
         bootbox.alert("Something is wrong with the job-status setting: "+settings.job_status)
@@ -196,6 +232,18 @@ $(document).ready(function () {
     // bootbox.alert("settings: "+settings)
   }
 
+
+  function disable_form () {
+    console.log($('#subleft input'))
+    $("#subleft input").each(function() {$(this).attr("disabled", true);});
+    $("#subleft label").each(function() {$(this).attr("disabled", true);});
+  }
+  function enable_form() {
+    console.log("#subleft input")
+    $("#subleft input").each(function() {$(this).attr("disabled", false);});
+    $("#subleft label").each(function() {$(this).attr("disabled", false);});
+    $("input[name='classification-type']:checked").click()
+  }
   function change_warp_directory(directory) {
     message = {command: "change_directory", data: directory};
     return message;
@@ -203,26 +251,17 @@ $(document).ready(function () {
 
   function send_settings_and_start_job() {
     message = {command: "start_job",
-              data: {}
-    }
-    // message.data.warp-folder = $('#warp-directory').val();
-    message.data.neural_net = $("#neural-net").val();
-    message.data.pixel_size = $("#pixel-size").val();
-    message.data.mask_radius=$("#mask-radius").val();
-    message.data.classification_type = $("input[name='classification-type']:checked").val();
-    message.data.high_res_initial =$("#high-res-initial").val();
-    message.data.high_res_final = $("#high-res-final").val();
-    message.data.run_count_startup = $("#startup-cycle-count").val();
-    message.data.run_count_refine = $("#refinement-cycle-count").val();
-    message.data.particle_count_initial = $("#start-count").val();
-    message.data.particle_count_update = $("#update-count").val();
-    message.data.class_number = $("#number-classes").val();
-    message.data.particles_per_class = $("#number-per-class").val();
-    message.data.automask = $("#automask").prop("checked");
-    message.data.autocenter = $("#autocenter").prop("checked");
+              data: prepare_settings()
+    };
     return message;
-    }
+  }
 
+    function send_settings_and_start_listening() {
+      message = {command: "listen",
+                data: prepare_settings()
+      }
+      return message;
+      }
   function get_console_from_server(data) {
     $("#console").html(data)
   }
@@ -235,30 +274,41 @@ $(document).ready(function () {
       {container: 'body',
       placement: 'bottom'}
     );
-    // adjust_galleries_shown();
+  }
+})
+
+$(document).on('click', '#classification-type label', function(event) {
+  var refinement_type_selected = $(this).children('input').attr("id");
+  switch (refinement_type_selected) {
+    case "abinit":
+      $("#neural-net").attr("disabled", false);
+      $("#startup-cycle-count").attr("disabled", false);
+      $("#high-res-initial").attr("disabled", false);
+      $("#number-per-class").attr("disabled", false);
+      $("#number-classes").attr("disabled", false);
+      break;
+    case "seeded":
+      $("#neural-net").attr("disabled", true);
+      $("#neural-net").popover("hide");
+      $("#startup-cycle-count").attr("disabled", false);
+      $("#high-res-initial").attr("disabled", false);
+      $("#number-per-class").attr("disabled", true);
+      $("#number-classes").attr("disabled", true);
+      break;
+    case "refine":
+      $("#neural-net").attr("disabled", true);
+      $("#neural-net").popover("hide");
+      $("#startup-cycle-count").attr("disabled", true);
+      $("#high-res-initial").attr("disabled", true);
+      $("#number-per-class").attr("disabled", true);
+      $("#number-classes").attr("disabled", true);
+      break;
   }
 
-  // function adjust_galleries_shown() {
-  //   curgal = parseInt($(".pagination > li.active").text(), 10);
-  //   console.log(curgal);
-  //   gal_len = $("[class*='page-item']").length;
-  //   console.log(gal_len);
-  //   $.each($("[class*='page-item']"), function (index, value) {
-  //     $(this).hide();
-  //     if ([0,1,2].includes(index)) {
-  //       $(this).show();
-  //     }
-  //     else if ([gal_len-1, gal_len-2, gal_len-3].includes(index)) {
-  //       $(this).show();
-  //     }
-  //     else if (Math.abs(parseInt($(this).text(),10) - curgal) < 4) {
-  //       $(this).show();
-  //     }
-  //   });
-  // }
+});
 
 
-})
+
 
 function set_vars(uri_from_server){
   uri = uri_from_server;
