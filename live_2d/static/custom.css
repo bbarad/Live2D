@@ -24,6 +24,8 @@
   overflow: auto;
   max-height: 50vh;
   white-space: pre-wrap;
+  display: flex;
+  flex-direction: column-reverse;
 }
 .pagination > li > a
 {
