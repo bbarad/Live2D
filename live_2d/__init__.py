@@ -13,7 +13,7 @@ from tornado.httpserver import HTTPServer
 import tornado.ioloop
 from tornado.options import define, options, parse_command_line
 from tornado.web import Application, RequestHandler, StaticFileHandler
-from tornado.websocket import WebSocketHandler
+from tornado.websocket import WebSocketHandler, WebSocketClosedError
 import uvloop
 
 from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger
@@ -76,11 +76,9 @@ class SocketHandler(WebSocketHandler):
             if config["job_status"] == "stopped":
                 config["job_status"]="listening"
                 config["counting"] = False
+                return_data = await update_settings(config, data)
                 self.write_message({"type":"alert","data":"Listening for new particles"})
-                message = {"type": "settings_update"}
-                message["settings"] = await generate_settings_message(config)
-                for client in clients:
-                    client.write_message(message)
+                await message_all_clients(return_data)
         elif type == 'kill_job':
             # WAIT FOR COUNTING TO FINISH IN CASE A JOB FAILS TO FINISH.
             while config["counting"]:
@@ -88,17 +86,16 @@ class SocketHandler(WebSocketHandler):
             if config["job_status"] == "running":
                 config["kill_job"] = True # This makes me happy.
                 config["job_status"] = "killed"
-                for client in clients:
-                    client.write_message({"type": "kill_received"})
+                await message_all_clients({"type": "kill_received"})
             elif config["job_status"] == "listening" and not config["counting"]:
-                config["job_status"] == "stopped"
+                config["job_status"] = "stopped"
                 self.write_message({"type": "alert", "data": "Stopped listening"})
-                message = {"type": "settings_update"}
+                message = {}
+                message["type"] = "settings_update"
                 message["settings"] = await generate_settings_message(config)
-                for client in clients:
-                    client.write_message(message)
-            # for client in clients:
-            #     client.write_message()
+                print(message)
+                await message_all_clients(message)
+
         elif type == 'get_gallery':
             print(data)
             return_data = await get_new_gallery(config, data)
@@ -118,9 +115,8 @@ class SocketHandler(WebSocketHandler):
                 log.info(f"Changing to the new warp directory: {config['warp_folder']}")
                 return_data = await initialize(config)
                 class_path_dict["path"] = os.path.join(config["working_directory"], "class_images")
-                for client in clients:
-                    client.write_message({"type":"alert", "data": "Changing warp directory"})
-                    client.write_message(return_data)
+                await message_all_clients({"type":"alert", "data": "Changing warp directory"})
+                await message_all_clients(return_data)
                 dump_json(config)
         else:
             print(message)
@@ -145,11 +141,7 @@ async def tail_log(config, clients = None, line_count = 1000):
     console_message = {}
     console_message["type"] = "console_update"
     console_message["data"] = stdout.decode("utf-8")
-    for client in clients:
-        try:
-            client.write_message(console_message)
-        except:
-            logging.warn(f"Could not contact client {client}")
+    await message_all_clients(console_message)
 
 async def listen_for_particles(config, clients):
     print("Listening for Particles?")
@@ -161,9 +153,9 @@ async def listen_for_particles(config, clients):
         print("listen job hasn't returned yet...")
         return
     if config["cycles"]:
-        particle_count_to_fire = config["settings"]["particle_count_update"]
+        particle_count_to_fire = int(config["settings"]["particle_count_update"])
     else:
-        particle_count_to_fire = config["settings"]["particle_count_initial"]
+        particle_count_to_fire = int(config["settings"]["particle_count_initial"])
 
     config["counting"] = True
     warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
@@ -177,8 +169,7 @@ async def listen_for_particles(config, clients):
         message = {}
         message["type"] = "settings_update"
         message["settings"] = await generate_settings_message(config)
-        for con in clients:
-            con.write_message(message)
+        await message_all_clients(message)
         loop = tornado.ioloop.IOLoop.current()
         loop.add_callback(execute_job_loop, config)
     config["counting"] = False
@@ -244,13 +235,8 @@ async def execute_job_loop(config):
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": start_cycle_number})
             log.info("Sending new gallery to clients")
-            for client in clients:
-                try:
-                    client.write_message(return_data)
-                except:
-                    logging.warn("Couldn't send updates due to broken websocket: {}".format(client))
+            await message_all_clients(return_data)
         # Startup Cycles
-        log.info("Startup Cycles")
         if not config["settings"]["classification_type"] == "refine":
             resolution_cycle_count = int(config["settings"]["run_count_startup"])
             log.info("=====================================")
@@ -258,11 +244,11 @@ async def execute_job_loop(config):
             log.info("=====================================")
             log.info("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, config["settings"]["class_number"]))
             log.info("Classification will begin at {}Å and step up to {}Å resolution over {} iterative cycles of classification".format(config["settings"]["high_res_initial"], config["settings"]["high_res_final"], resolution_cycle_count))
-            log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process, config["process_count"]))
+            log.info("{0} particles per process will be classified by {1} processes.".format(ceil(particles_per_process*class_fraction), config["process_count"]))
             for cycle_number in range(resolution_cycle_count):
                 if config["kill_job"]:
-                    log.info("Job Successfully Killed")
-                    break
+                    log.info("Job Killed - Cycle Skipped")
+                    continue
                 low_res_limit = 300
                 high_res_limit = int(config["settings"]["high_res_initial"])-(((int(config["settings"]["high_res_initial"])-int(config["settings"]["high_res_final"]))/(resolution_cycle_count-1))*cycle_number)
                 filename_number = cycle_number + start_cycle_number
@@ -271,6 +257,7 @@ async def execute_job_loop(config):
                 log.info("===================================================")
                 log.info("High Res Limit: {0:.2}".format(high_res_limit))
                 log.info("Fraction of Particles: {0:.2}".format(class_fraction))
+                log.info(f"Dispatching job at {datetime.datetime.now()}")
                 pool = multiprocessing.Pool(processes=process_count)
                 refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = working_directory)
                 results_list = await loop.run_in_executor(executor, pool.map, refine_job, range(process_count))
@@ -286,11 +273,7 @@ async def execute_job_loop(config):
                 dump_json(config)
                 return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
                 log.info("Sending new gallery to clients")
-                for client in clients:
-                    try:
-                        client.write_message(return_data)
-                    except:
-                        logging.warn("Couldn't send updates due to broken websocket: {}".format(client))
+                await message_all_clients(return_data)
             start_cycle_number = start_cycle_number + resolution_cycle_count
 
         # Refinement Cycles
@@ -303,8 +286,8 @@ async def execute_job_loop(config):
         log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process, config["process_count"]))
         for cycle_number in range(refinement_cycle_count):
             if config["kill_job"]:
-                log.info("Job Successfully Killed")
-                break
+                log.info("Job Killed - Cycle Skipped")
+                continue
             log.info("===================================================")
             log.info("Sending a new classification job out for processing")
             log.info("===================================================")
@@ -313,7 +296,7 @@ async def execute_job_loop(config):
             filename_number = cycle_number + start_cycle_number
             log.info("High Res Limit: {0}".format(high_res_limit))
             log.info("Fraction of Particles: {0:.2}".format(class_fraction))
-            log.info(f"Dispatching job at {time.time()}")
+            log.info(f"Dispatching job at {datetime.datetime.now()}")
             pool = multiprocessing.Pool(processes=int(config["process_count"]))
             refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = working_directory)
             results_list = await loop.run_in_executor(executor,pool.map,refine_job, range(process_count))
@@ -328,11 +311,7 @@ async def execute_job_loop(config):
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
             log.info("Sending new gallery to clients")
-            for client in clients:
-                try:
-                    client.write_message(return_data)
-                except:
-                    logging.warn("Couldn't send updates due to broken websocket: {}".format(client))
+            await message_all_clients(return_data)
         if config["kill_job"]:
             config["job_status"] = "stopped"
             config["kill_job"] = False
@@ -340,12 +319,21 @@ async def execute_job_loop(config):
             config["job_status"] = "listening"
             config["kill_job"] = False
         os.chdir(sys.path[0])
+        log.info("Done with job - sending result to all clients")
         return_message = await generate_job_finished_message(config)
-        for client in clients:
-            client.write_message(return_message)
+        await message_all_clients(return_message)
     except Exception:
         log.exception("Job Loop Failed")
         raise
+
+async def message_all_clients(message):
+    for client in clients:
+        try:
+            client.write_message(message)
+        except WebSocketClosedError:
+            logging.warn(f"Could not write a message to client {client} due to a WebSocketClosedError. Removing that client from the client list.")
+            clients.remove(client)
+
 
 
 def main():
