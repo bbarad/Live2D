@@ -254,7 +254,7 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
         "No.dat", # Datfilename,
         "1", # max threads
     ])
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r814/bin/refine2d", stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    p = subprocess.Popen("refine2d", stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     log.info(out.decode('utf-8'))
 
@@ -297,7 +297,7 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
     ])
     # if process_number=0:
     #     log.info(input)
-    p = subprocess.Popen("/gne/home/rohoua/software/cisTEM2/r814/bin/refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)
+    p = subprocess.Popen("refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     end_time = time.time()
     time = end_time - start_time
