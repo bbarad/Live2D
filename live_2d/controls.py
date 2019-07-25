@@ -73,7 +73,7 @@ def new_config(warp_folder, working_directory):
 
 def change_warp_directory(warp_folder, config):
     if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
-        log.warn("It doesn't look like there is a warp job set up to run in this folder: {}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder.")
+        log.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder.")
         return False
     working_directory = os.path.join(warp_folder, "classification")
     if not os.path.isdir(working_directory):
@@ -98,11 +98,10 @@ async def initialize(config = load_config()):
     message["settings"] = await generate_settings_message(config)
     return message
 
-async def generate_job_finished_message(config = load_config()):
+async def generate_job_finished_message(config):
     message = {}
     message["type"] = "settings_update"
     message["settings"] = await generate_settings_message(config)
-    print(message)
     return message
 
 async def get_new_gallery(config, data):
@@ -140,11 +139,8 @@ async def generate_settings_message(config):
     message["warp_folder"] = config["warp_folder"]
     message["job_status"] = config["job_status"]
     message["force_abinit"] = config["force_abinit"]
-    print(message)
     return message
 
-async def initialize_new_settings(config, warp_directory):
-    return config
 
 async def generate_gallery_html(config, gallery_number_selected = -1):
     # Catch new cycles
