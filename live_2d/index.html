@@ -44,7 +44,7 @@
           </div>
           <hr>
           <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#console"> Job Output (Last 1000 Lines) </button>
-          <div id="console" class="terminal collapse"><h2>Log will Populate Here</h2></div>
+          <div id="console" class="terminal collapse text-monospace"><h2>Log will Populate Here</h2></div>
           <!-- STREAMING STDOUT TO A "TERMINAL" HERE -->
           <hr>
         </div>
@@ -81,7 +81,7 @@
                     <div class="col-lg">
                       <div class="form-group form-group-inline">
                         <label for="pixel-size">Binned Pixel Size: </label>
-                        <div class="input-group" rel="popover" data-trigger="hover" data-placement="top" Title="Binned Pixel Size" data-content="Usually should be pixel size used by Warp after binning. You can change this to re-bin in cistem, but this is not recommended and should be considered expert control.">
+                        <div class="input-group" rel="popover" data-trigger="hover" data-placement="top" Title="Binned Pixel Size" data-content="Usually should be the pixel size used by Warp after binning. You can use a different (larger) pixel size to re-bin in cistem, but this is not recommended and should be considered expert control.">
                           <input type="text" class="form-control" id="pixel-size" placeholder="1.2007" aria-label="pixel-size">
                           <div class="input-group-append"><span class="input-group-text" id=pixel-size-unit>Å</span></div>
                         </div>
