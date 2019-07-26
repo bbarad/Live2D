@@ -58,25 +58,18 @@ def count_particles_per_class(star_filename):
 
 
 
-def particle_count_difference(larger_stack, smaller_stack):
+def particle_count_difference(warp_stack, previous_number):
     """Quickly determine the difference in number of particles"""
-    with open(smaller_stack, "r") as f:
+    with open(warp_stack, "r") as f:
         i=0
         j = 0
         for i,l in enumerate(f):
             if isheader(l):
                 j += 1
             pass
-        smaller_particle_count = i+1-j
+        total_particle_count = i+1-j
+        difference = total_particle_count - previous_number
 
-    with open(larger_stack, "r") as f2:
-        i2=0
-        j2 = 0
-        for i2,l2 in enumerate(f2):
-            if isheader(l):
-                j2 += 1
-            pass
-        difference = i2+1-j2 - smaller_particle_count
     return difference
 
 
@@ -316,7 +309,10 @@ def merge_star_files(cycle, process_count=32, working_directory = "~"):
                     for line in infile:
                         if not isheader(line):
                             outfile.write(line)
-            subprocess.Popen("/bin/rm partial_classes_{}_{}.star".format(cycle+1, process_number), shell=True)
+            try:
+                subprocess.Popen("/bin/rm partial_classes_{}_{}.star".format(cycle+1, process_number), shell=True)
+            except:
+                log.warn("Failed to remove file partial_classes_{}_{}.star".format(cycle+1, process_number))
     log.info("Finished writing cycle_{}.star".format(cycle+1))
     return os.path.join(working_directory, "cycle_{}.star".format(cycle+1))
 
@@ -330,7 +326,10 @@ def merge_2d_subjob(cycle, process_count=32):
     out,_ = p.communicate(input=input.encode('utf-8'))
     log.info(out.decode('utf-8'))
     for i in range(process_count):
-        p = subprocess.Popen("/bin/rm dump_file_{}.dat".format(i+1), shell=True)
+        try:
+            p = subprocess.Popen("/bin/rm dump_file_{}.dat".format(i+1), shell=True)
+        except:
+            log.warn("Failed to remove file dump_file_{}.dat".format(i+1))
 
 
 def calculate_particle_statistics(filename, class_number=50, particles_per_class=300, process_count = 32):
