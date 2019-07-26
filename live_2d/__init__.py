@@ -23,7 +23,7 @@ define('port', default=8181, help='port to listen on')
 # Settings related to actually operating the webpage
 settings = {
     "websocket_ping_interval": 30,
-    "static_hash_cache": False
+    # "static_hash_cache": False
 }
 starting_directory = os.getcwd()
 config = load_config(os.path.join(sys.path[0],'latest_run.json'))
@@ -61,14 +61,19 @@ class SocketHandler(WebSocketHandler):
                 self.write_message(return_data)
                 # TODO: offer to hard kill the job, and warn user that this may significantly impact project directory.
             elif config['job_status'] == "stopped" or config['job_status'] == "listening":
-                config["job_status"] = "running"
-                return_data = await update_settings(config, data)
-                for con in clients:
-                    con.write_message(return_data)
-                return_data_2 = {"type": "job_started"}
-                self.write_message(return_data_2)
-                loop = tornado.ioloop.IOLoop.current()
-                loop.add_callback(execute_job_loop, config)
+                try:
+                    assert os.path.isfile(os.path.join(config["warp_folder"], f"allparticles_{data['neural_net']}.star"))
+                    config["job_status"] = "running"
+                    return_data = await update_settings(config, data)
+                    for con in clients:
+                        con.write_message(return_data)
+                    return_data_2 = {"type": "job_started"}
+                    self.write_message(return_data_2)
+                    loop = tornado.ioloop.IOLoop.current()
+                    loop.add_callback(execute_job_loop, config)
+                except AssertionError:
+                    log.error("Tried to switch neural nets to one that doesn't have picked particles")
+                    self.write_message({"type": "alert", "data": f"{data['neural_net']} doesn't have picked particles. Listen commabd has been aborted."})
             else:
                 log.info("Malformed job status - didn't start job")
             pass
@@ -76,9 +81,14 @@ class SocketHandler(WebSocketHandler):
             if config["job_status"] == "stopped":
                 config["job_status"]="listening"
                 config["counting"] = False
-                return_data = await update_settings(config, data)
-                self.write_message({"type":"alert","data":"Listening for new particles"})
-                await message_all_clients(return_data)
+                try:
+                    assert os.path.isfile(os.path.join(config["warp_folder"], f"allparticles_{data['neural_net']}.star"))
+                    return_data = await update_settings(config, data)
+                    self.write_message({"type":"alert","data":"Listening for new particles"})
+                    await message_all_clients(return_data)
+                except AssertionError:
+                    log.error("Tried to switch neural nets to one that doesn't have picked particles")
+                    self.write_message({"type": "alert", "data": f"{data['neural_net']} doesn't have picked particles. Listen commabd has been aborted."})
         elif type == 'kill_job':
             # WAIT FOR COUNTING TO FINISH IN CASE A JOB FAILS TO FINISH.
             while config["counting"]:
@@ -109,7 +119,7 @@ class SocketHandler(WebSocketHandler):
             config_accepted = change_warp_directory(data, config)
             log.info(f"Trying to change to folder {data}")
             if not config_accepted:
-                self.write_message({"type": "alert", "data": "The folder you selected doesn't have a latest.settings file from a warp job, so the change was aborted"})
+                self.write_message({"type": "alert", "data": "The folder you selected doesn't have a previous.settings file from a warp job, so the change was aborted"})
             else:
                 initialize_logger(config)
                 log.info(f"Changing to the new warp directory: {config['warp_folder']}")
@@ -152,15 +162,15 @@ async def listen_for_particles(config, clients):
     if config["counting"]:
         print("listen job hasn't returned yet...")
         return
+    config["counting"] = True
     if config["cycles"]:
         particle_count_to_fire = int(config["settings"]["particle_count_update"])
+        current_particle_count = 0
     else:
         particle_count_to_fire = int(config["settings"]["particle_count_initial"])
-
-    config["counting"] = True
+        current_particle_count = config["cycles"][-1]["particle_count"]
     warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
-    current_particles_filename = os.path.join(config["working_directory"], "combined_stack.star")
-    new_particle_count = processing_functions.particle_count_difference(warp_stack_filename, current_particles_filename)
+    new_particle_count = await processing_functions.particle_count_difference(warp_stack_filename, current_particle_count)
     log.info(f"New Particles Detected: {new_particle_count}")
     print(new_particle_count)
     if new_particle_count >= particle_count_to_fire:
@@ -244,7 +254,7 @@ async def execute_job_loop(config):
             log.info("=====================================")
             log.info("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, config["settings"]["class_number"]))
             log.info("Classification will begin at {}Å and step up to {}Å resolution over {} iterative cycles of classification".format(config["settings"]["high_res_initial"], config["settings"]["high_res_final"], resolution_cycle_count))
-            log.info("{0} particles per process will be classified by {1} processes.".format(ceil(particles_per_process*class_fraction), config["process_count"]))
+            log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process*class_fraction, config["process_count"]))
             for cycle_number in range(resolution_cycle_count):
                 if config["kill_job"]:
                     log.info("Job Killed - Cycle Skipped")
@@ -327,7 +337,7 @@ async def execute_job_loop(config):
         raise
 
 async def message_all_clients(message):
-    for client in clients:
+    for client in list(clients):
         try:
             client.write_message(message)
         except WebSocketClosedError:

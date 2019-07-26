@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+import xml.etree.ElementTree as ET
 
 import tornado.template
 loader = tornado.template.Loader(".")
@@ -39,17 +40,41 @@ def load_config(filename="latest_run.json"):
     # print_config(config)
     return config
 
-def new_config(warp_folder, working_directory):
+def create_new_config(warp_folder, working_directory):
     # may want to change this to a template file processed by tornado eventually, easier to keep up to date.
+    settingsfile = os.path.join(warp_folder, "previous.settings")
+    tree = ET.parse(settingsfile)
+    root = tree.getroot()
+    try:
+        pixel_size_raw = float(root.find("*[@Name='PixelSizeX']").get("Value"))
+        bin = float(root.find("Import/*[@Name='BinTimes']").get("Value"))
+        pixel_size = pixel_size_raw*(2**bin)
+    except:
+        log.error("Pixel size could not be extracted.")
+        return False
+
+    try:
+        mask_radius = root.find("Picking/*[@Name='Diameter']").get("Value")
+    except:
+        log.error("Mask Radius could not be extracted.")
+        return False
+
+    try:
+        assert root.find("Picking/*[@Name='DoExport']").get("Value") == "True"
+        neural_net = root.find("Picking/*[@Name='ModelPath']").get("Value")
+    except:
+        log.error("No particles are set to export.")
+        return False
+
     config = {
     "warp_folder": warp_folder,
     "working_directory": working_directory,
     "logfile": "logfile.txt",
     "process_count": 32,
     "settings": {
-        "neural_net": "GenentechNet2Mask_20190627",
-        "pixel_size": "1.2007",
-        "mask_radius": "150",
+        "neural_net": neural_net,
+        "pixel_size": pixel_size,
+        "mask_radius": mask_radius,
         "high_res_initial": "40",
         "high_res_final": "8",
         "run_count_startup": "15",
@@ -75,18 +100,23 @@ def change_warp_directory(warp_folder, config):
     if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
         log.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder.")
         return False
+    log.info("Found previous.settings file. Preparing to change folders.")
     working_directory = os.path.join(warp_folder, "classification")
     if not os.path.isdir(working_directory):
         os.mkdir(working_directory)
     configfile = os.path.join(working_directory, "latest_run.json")
+    new_config = {}
     if os.path.isfile(configfile):
         log.info("Detected an existing config file in that warp folder, so we're loading that one.")
         new_config = load_config(configfile)
         new_config["job_status"] = "stopped"
         new_config["kill_job"] = False
     else:
-        log.info("Detected an existing config file in that warp folder, so we're loading that one.")
-        new_config = new_config(warp_folder)
+        log.info("There doesn't appear to be a config yet - generating one.")
+        working_directory = os.path.join(warp_folder, "classification")
+        new_config = create_new_config(warp_folder, working_directory)
+        if not new_config:
+            return False
     config.update(new_config)
     return True
 
@@ -118,6 +148,7 @@ def dump_json(config):
         json.dump(config, jsonfile, indent=2)
 
 async def update_settings(config, data):
+    assert os.path.isfile(os.path.join(config["warp_folder"], f"allparticles_{data['neural_net']}.star"))
     if not data["neural_net"] == config["settings"]["neural_net"]:
         config["settings"]["neural_net"] = data["neural_net"]
         config["force_abinit"] = True
@@ -180,9 +211,11 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
         entry = {}
         entry["name"] = "Class {}".format(i+1)
         entry["url"] = os.path.join("/gallery/", current_gal["name"], "{}.png".format(i+1))
-
-        entry["count"] = current_gal["particle_count_per_class"][i+1]
+        try:
+            entry["count"] = current_gal["particle_count_per_class"][i+1]
+        except:
+            entry["count"] = 0
 
         current_gal["entries"].append(entry)
     string_loader = loader.load("classmodule.html")
-    return string_loader.generate(current_gallery=current_gal, classification_list = [(int(i["number"]), i["block_type"], i["particle_count"]) for i in config["cycles"]]).decode("utf-8")
+    return string_loader.generate(current_gallery=current_gal, classification_list = [(int(i["number"]), i["block_type"], i["particle_count"]) for i in config["cycles"]], cachename=config["warp_folder"][-6:]).decode("utf-8")

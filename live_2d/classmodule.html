@@ -26,8 +26,8 @@
 <div class="row no-gutters">
 {% for entry in current_gallery["entries"] %}
   <div class="col-lg-3 col-4">
-    <a href="{{entry['url']}}" data-toggle="lightbox"  data-gallery="gallery" data-footer="Cycle {{current_gallery['number']}} | {{entry['name']}} | {{entry['count']}} Particles">
-      <img src="{{entry['url']}}" class="img-fluid" alt="{{entry['name']}}">
+    <a href="{{entry['url']}}?v={{cachename}}" data-toggle="lightbox"  data-gallery="gallery" data-footer="Cycle {{current_gallery['number']}} | {{entry['name']}} | {{entry['count']}} Particles">
+      <img src="{{entry['url']}}?v={{cachename}}" class="img-fluid" alt="{{entry['name']}}">
     </a>
   </div>
 {% end %}
