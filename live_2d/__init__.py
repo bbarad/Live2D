@@ -319,6 +319,8 @@ async def execute_job_loop(config):
             return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
             log.info("Sending new gallery to clients")
             await message_all_clients(return_data)
+        if config["settings"]["classification_type"] == "abinit":
+            config["settings"]["classification_type"] = "seeded"
         if config["kill_job"]:
             config["job_status"] = "stopped"
             config["kill_job"] = False
