@@ -58,6 +58,7 @@ body, html {
 }
 
 #left, #right {
+  padding: 2.5vh;
   max-height:95vh;
   overflow-y: scroll;
 }
