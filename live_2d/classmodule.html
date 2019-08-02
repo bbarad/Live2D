@@ -1,4 +1,4 @@
-<h5 class="text-center">Classification Cycle Selector</h5>
+<!-- <h5 class="text-center">Classification Cycle Selector</h5> -->
 <select class="form-control" id="class-selector">
   {% for number,type, particle_count in classification_list[::-1] %}
     <option value="{{number}}" {% if number == int(current_gallery['number']) %}selected{% end %}>Cycle {{number}} - {{particle_count}} particles</option>
