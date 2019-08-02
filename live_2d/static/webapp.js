@@ -8,7 +8,6 @@ $(document).ready(function () {
     {container: 'body'}
   );
 
-
   if(window.WebSocket) {
     start_websocket();
     // control_websocket()
@@ -30,13 +29,12 @@ $(document).ready(function () {
     // bootbox.alert(ws_url)
     var ws = new WebSocket(ws_url);
     ws.onopen = function(){
-                          ws.send(JSON.stringify({command:"initialize", data:{}}));
+      ws.send(JSON.stringify({command:"initialize", data:{}}));
     };
     ws.onmessage = function(msg){
       data_object = JSON.parse(msg.data)
       switch(data_object.type) {
         case "init":
-          console.log(data_object.settings);
           get_settings_from_server(data_object.settings);
           update_class_gallery(data_object.gallery_data);
           break;
@@ -47,8 +45,6 @@ $(document).ready(function () {
           update_class_gallery(data_object.gallery_data);
           break;
         case "settings_update":
-          console.log("got settings update");
-          console.log(data_object.settings);
           get_settings_from_server(data_object.settings);
           break;
         case "job_started":
@@ -75,7 +71,7 @@ $(document).ready(function () {
           bootbox.alert(data_object.data);
           break;
         default:
-          // bootbox.alert("Didn't understand the message type "+data_object.type)
+          bootbox.alert("Didn't understand the message type "+data_object.type);
       }
     };
     // $(document).off('click',"#submit-settings");
@@ -131,7 +127,6 @@ $(document).ready(function () {
     $(document).off('change', '#class-selector');
     $(document).on('change', '#class-selector', function() {
       event.preventDefault();
-      console.log($(this).val());
       ws.send(JSON.stringify({command: "get_gallery", data: {gallery_number: $(this).val()}
       }));
     });
@@ -165,9 +160,15 @@ $(document).ready(function () {
 
 
   function get_settings_from_server(settings) {
-    console.log("Updating Frontend Settings")
-    console.log(settings)
-    $("#warp-directory").html(settings.warp_folder.split("/").pop());
+    console.log("Updating Frontend Settings");
+    console.log(settings);
+    warp_folder_list = settings.warp_folder.split("/");
+    warp_folder = warp_folder_list.pop();
+    if (warp_folder == "") {
+      warp_folder = warp_folder_list.pop();
+    }
+
+    $("#warp-directory").html(warp_folder);
     $("#neural-net").html(settings.settings.neural_net);
     $("#mask-radius").val(settings.settings.mask_radius);
     $("#" + settings.settings.classification_type).click();
