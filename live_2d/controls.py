@@ -40,6 +40,44 @@ def load_config(filename="latest_run.json"):
     # print_config(config)
     return config
 
+def update_config_from_warp(config):
+    settingsfile = os.path.join(config["warp_folder"], "previous.settings")
+    assert os.path.isfile(settingsfile)
+    tree = ET.parse(settingsfile)
+    root = tree.getroot()
+    try:
+        assert root.find("Picking/*[@Name='DoExport']").get("Value") == "True"
+        box_size = root.find("Picking/*[@Name='BoxSize']").get("Value")
+        print(box_size)
+        neural_net = root.find("Picking/*[@Name='ModelPath']").get("Value")
+        print(neural_net)
+        warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
+        print(warp_value_cutoff)
+    except:
+        log.error("No particles are set to export.")
+        return False
+
+    log.info(f"Before checks, {config['next_run_new_particles']}")
+    if not config["settings"]["box_size"] == box_size:
+        print("Changed config", config["settings"]["box_size"], box_size)
+        config["settings"]["box_size"] = box_size
+        config["next_run_new_particles"] = True
+        config["force_abinit"] = True
+    if not config["settings"]["neural_net"] == neural_net:
+        print("Changed config",config["settings"]["neural_net"], neural_net)
+        config["settings"]["neural_net"] = neural_net
+        config["next_run_new_particles"] = True
+        config["force_abinit"] = True
+    if not config["settings"]["warp_value_cutoff"] == warp_value_cutoff:
+        print("Changed Config", config["settings"]["warp_value_cutoff"], warp_value_cutoff)
+        config["settings"]["warp_value_cutoff"] = warp_value_cutoff
+        config["next_run_new_particles"] = True
+        config["force_abinit"] = True
+    log.info(f"After checks, {config['next_run_new_particles']}")
+    dump_json(config)
+    return True
+
+
 def create_new_config(warp_folder, working_directory):
     # may want to change this to a template file processed by tornado eventually, easier to keep up to date.
     settingsfile = os.path.join(warp_folder, "previous.settings")
@@ -61,7 +99,9 @@ def create_new_config(warp_folder, working_directory):
 
     try:
         assert root.find("Picking/*[@Name='DoExport']").get("Value") == "True"
+        box_size = root.find("Picking/*[@Name='BoxSize']").get("Value")
         neural_net = root.find("Picking/*[@Name='ModelPath']").get("Value")
+        warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
     except:
         log.error("No particles are set to export.")
         return False
@@ -72,6 +112,8 @@ def create_new_config(warp_folder, working_directory):
     "logfile": "logfile.txt",
     "process_count": 32,
     "settings": {
+        "box_size": box_size,
+        "warp_value_cutoff": warp_value_cutoff,
         "neural_net": neural_net,
         "pixel_size": pixel_size,
         "mask_radius": mask_radius,
@@ -80,7 +122,7 @@ def create_new_config(warp_folder, working_directory):
         "run_count_startup": "15",
         "run_count_refine": "5",
         "classification_type": "abinit",
-        "particle_count_initial": "50000",
+        "particle_count_initial": "15000",
         "particle_count_update": "50000",
         "autocenter": True,
         "automask": False,
@@ -95,6 +137,7 @@ def create_new_config(warp_folder, working_directory):
     "kill_job": False
     }
     return config
+
 
 def change_warp_directory(warp_folder, config):
     if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
@@ -148,11 +191,6 @@ def dump_json(config):
         json.dump(config, jsonfile, indent=2)
 
 async def update_settings(config, data):
-    assert os.path.isfile(os.path.join(config["warp_folder"], f"allparticles_{data['neural_net']}.star"))
-    if not data["neural_net"] == config["settings"]["neural_net"]:
-        config["settings"]["neural_net"] = data["neural_net"]
-        config["force_abinit"] = True
-        config["next_run_new_particles"] = True
     for key in config["settings"].keys():
         try:
             config["settings"][key] = data[key]

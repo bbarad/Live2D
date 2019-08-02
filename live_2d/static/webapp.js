@@ -139,13 +139,15 @@ $(document).ready(function () {
     $(document).off('click',"[data-toggle='lightbox']");
     $(document).on('click', '[data-toggle="lightbox"]', function(event) {
                     event.preventDefault();
-                    $(this).ekkoLightbox();
+                    $(this).ekkoLightbox({
+                      showArrows: false,
+                      width: 300,
+                      height: 300
+                    });
     });
   }
   function prepare_settings() {
     data = {}
-    data.neural_net = $("#neural-net").val();
-    data.pixel_size = $("#pixel-size").val();
     data.mask_radius=$("#mask-radius").val();
     data.classification_type = $("input[name='classification-type']:checked").val();
     data.high_res_initial =$("#high-res-initial").val();
@@ -166,8 +168,7 @@ $(document).ready(function () {
     console.log("Updating Frontend Settings")
     console.log(settings)
     $("#warp-directory").html(settings.warp_folder.split("/").pop());
-    $("#neural-net").val(settings.settings.neural_net);
-    $("#pixel-size").val(settings.settings.pixel_size);
+    $("#neural-net").html(settings.settings.neural_net);
     $("#mask-radius").val(settings.settings.mask_radius);
     $("#" + settings.settings.classification_type).click();
     $("#high-res-initial").val(settings.settings.high_res_initial);
@@ -281,23 +282,18 @@ $(document).on('click', '#classification-type label', function(event) {
   var refinement_type_selected = $(this).children('input').attr("id");
   switch (refinement_type_selected) {
     case "abinit":
-      $("#neural-net").attr("disabled", false);
       $("#startup-cycle-count").attr("disabled", false);
       $("#high-res-initial").attr("disabled", false);
       $("#number-per-class").attr("disabled", false);
       $("#number-classes").attr("disabled", false);
       break;
     case "seeded":
-      $("#neural-net").attr("disabled", true);
-      $("#neural-net").popover("hide");
       $("#startup-cycle-count").attr("disabled", false);
       $("#high-res-initial").attr("disabled", false);
       $("#number-per-class").attr("disabled", true);
       $("#number-classes").attr("disabled", true);
       break;
     case "refine":
-      $("#neural-net").attr("disabled", true);
-      $("#neural-net").popover("hide");
       $("#startup-cycle-count").attr("disabled", true);
       $("#high-res-initial").attr("disabled", true);
       $("#number-per-class").attr("disabled", true);

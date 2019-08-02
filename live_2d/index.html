@@ -32,13 +32,10 @@
   </head>
   <body>
     <div class="container">
-      <div class="text-center"><h1>Live 2D Classification on Krios-1</h1></div>
-      <h2 class="text-center">Job Status: <div id="job-status">Stopped</div></h2>
-      <hr>
       <div class="row">
-        <div class="col-md-7 col-xl-8 col-12 order-md-last" id="right">
+        <div class="col-md-7 col-xl-8 col-12 order-md-last my-auto" id="right">
           <div id="gallery-block">
-            <button class="btn btn-block btn-secondary" data-toggle="collapse" data-target="#class-gallery" id="class-button"> Classes </button>
+            <button class="btn btn-block btn-secondary my-2" data-toggle="collapse" data-target="#class-gallery" id="class-button"> Classes </button>
             <div class="mrc-gallery collapse show" id="class-gallery">
             </div>
           </div>
@@ -50,11 +47,16 @@
         </div>
         <!-- Options Pane -->
         <div class="col-md-5 col-xl-4 col-12 order-md-first" id="left">
+          <div class="text-center"><h5>Live 2D Classification on Krios-1</h5></div>
+          <h5 class="text-center">Job Status: <span id="job-status">Stopped</span></h5>
           <form class="form" id="options-form">
             <div class="form-group">
               <div class="text-center font-weight-bold" for="warp-directory">Current Warp Directory </div>
-              {# <input type="text" class="form-control" id="warp-directory" placeholder="/gna/data/cryoem/DATA_COLLECTIONS/WARP/" aria-label="warp-directory" disabled> #}
               <div class="text-center" id="warp-directory"></div>
+            </div>
+            <div class="form-group">
+              <div class="text-center font-weight-bold" for="neural-net">Active Neural Net</div>
+              <div class="text-center" id="neural-net"></div>
             </div>
             <div class="btn-toolbar my-2">
               <button disabled type="button" class="btn btn-block btn-primary" id="update-warp-directory" rel="popover" data-trigger="hover" data-placement="top" Title="Update Warp Directory" data-content="Change the directory for your warp project. Use a symlinked directory to avoid writing to the data collection folder. This must be updated before updating settings.">Update Warp Directory</button>
@@ -73,11 +75,8 @@
                   <h3><button class="btn btn-block btn-secondary" type="button" data-toggle="collapse" data-target="#collapseOne">User Settings </button></h3>
                 </div>
                 <div id="collapseOne" class="collapse show" aria-labelledby="user-settings">
-                  <div class="form-group">
-                    <label for="neural-net">Neural Net Used</label>
-                    <input type="text" class="form-control" id="neural-net"  aria-label="neural-net" rel="popover" data-trigger="hover" data-placement="top" Title="Neural Net" data-content="The Neural Net used to process your data. When you change this entry, a new particle stack is generated from scratch, which takes longer than an update, and new class averages will be generated from a random seed.">
-                  </div>
-                  <div class="row">
+
+                  {# <div class="row">
                     <div class="col-lg">
                       <div class="form-group form-group-inline">
                         <label for="pixel-size">Binned Pixel Size: </label>
@@ -87,7 +86,7 @@
                         </div>
                       </div>
                     </div>
-                    <div class="col-lg">
+                    <div class="col-lg"> #}
                       <div class="form-group form-group-inline">
                         <label for="mask-radius">Mask Radius: </label>
                         <div class="input-group">
@@ -95,8 +94,8 @@
                           <div class="input-group-append"><span class="input-group-text" id=mask-radius-unit>Å</span></div>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    {# </div> #}
+                  {# </div> #}
 
                   <div class="row">
                     <div class="col">

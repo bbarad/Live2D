@@ -1,4 +1,5 @@
 import asyncio
+import errno
 import glob
 import itertools
 import logging
@@ -58,7 +59,7 @@ def count_particles_per_class(star_filename):
 
 
 
-def particle_count_difference(warp_stack, previous_number):
+async def particle_count_difference(warp_stack, previous_number):
     """Quickly determine the difference in number of particles"""
     with open(warp_stack, "r") as f:
         i=0
@@ -68,6 +69,8 @@ def particle_count_difference(warp_stack, previous_number):
                 j += 1
             pass
         total_particle_count = i+1-j
+        print(total_particle_count)
+        print(previous_number)
         difference = total_particle_count - previous_number
 
     return difference
@@ -97,6 +100,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     previous_file = os.path.isfile(combined_filename)
     if new_net:
         # Hack to overwrite the old file if you switch to a new neural net.
+        log.info("Due to config changes, forcing complete reimport of particles.")
         previous_file = False
     os.chdir(warp_folder)
     total_particles = star.parse_star(warp_star_filename)
@@ -114,7 +118,9 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         log.info("Previous Particles: {}".format(prev_par))
         new_particles_count = len(total_particles) - prev_par
         log.info("Total Particles to Import: {}".format(new_particles_count))
-        offset = mrcs.data.base.size()
+        print(prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize+ mrcs.header.nbytes + mrcs.extended_header.nbytes)
+        print(mrcs.data.base.size())
+        offset = prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize + mrcs.header.nbytes + mrcs.extended_header.nbytes
         # log.info("Bytes Offset: {}".format(offset))
         data_dtype = mrcs.data.dtype
         # log.info("dtype: {}".format(data_dtype))
@@ -125,31 +131,42 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     mrcfile_raw = np.memmap(combined_filename, dtype=data_dtype, offset=offset, shape=shape, mode="r+")
     new_offset=0
     new_filenames = stacks_filenames[prev_par:].unique()
+    filename_counts = stacks_filenames[prev_par:].value_counts()
     for index, filename in enumerate(new_filenames):
-        # try:
+        try_number = 0
+        wanted_z = filename_counts[filename]
+        while(True):
             with mrcfile.mmap(filename, "r+", permissive=True) as partial_mrcs:
-                try:
-                    x = partial_mrcs.header.nx
-                    y = partial_mrcs.header.ny
-                    z = partial_mrcs.header.nz
-                    mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
-                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
-                except Exception: # If the file size is wrong, don't just assume its gonna be wrong...
-                    log.exception("Particle stack header didn't match data - Trying to reformat and continue")
-                    partial_mrcs.update_header_from_data()
-                    x = partial_mrcs.header.nx
-                    y = partial_mrcs.header.ny
-                    z = partial_mrcs.header.nz
-                    mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
-                    log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                x = partial_mrcs.header.nx
+                y = partial_mrcs.header.ny
+                z = partial_mrcs.header.nz
+                if not z == wanted_z:
+                    if try_number >= 12:
+                        raise IOERROR(errno.EIO,f"The data header didn't match the starfile: {z}, {wanted_z}")
+                    log.warn(f"File {filename} has a header that doesn't match the number of particles in the star file.")
+                    try_number +=1
+                    time.sleep(10)
+                    continue
+
+                if not x*y*wanted_z == partial_mrcs.data.size:
+                    if try_number >= 12:
+                        raise IOError(errno.ETIMEDOUT, "Took too long for Warp to correct the file. Killing job.")
+                    log.warn(f"File {filename} seems to not be done writing from Warp. Waiting 10 seconds and trying again.")
+                    try_number +=1
+                    time.sleep(10)
+                    continue
+
+                mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
+                log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                 new_offset = new_offset+z
-        # except:
-        #     log.error(f"Failed to import {filename} (number {index+1} of {len(new_filenames)}) - will not import any more particles")
-        #     break
+                break
+
+
     mrcfile_raw.flush()
     del mrcfile_raw
     # FIX THE HEADER
     with mrcfile.mmap(combined_filename, "r+", permissive=True) as mrcs:
+        assert os.stat(combined_filename).st_size == mrcs.header.nbytes+mrcs.extended_header.nbytes + mrcs.header.nx*mrcs.header.ny*len(total_particles)*mrcs.data.dtype.itemsize
         mrcs.header.nz = mrcs.header.mz = len(total_particles)
 
     os.chdir(working_directory)
@@ -216,7 +233,13 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     return len(total_particles)
 
 
-def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40, new_star_file = "cycle_0.star", working_directory = "~"):
+def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40, new_star_file = "cycle_0.star", working_directory = "~", automask = False, autocenter = True):
+    automask_text = "No"
+    if automask == True:
+        automask_text = "Yes"
+    autocenter_text = "No"
+    if autocenter == True:
+        autocenter_text = "Yes"
     input = "\n".join([
         input_stack, # Input MRCS stack
         new_star_file, # Input Star file
@@ -241,8 +264,8 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
         "Yes", # Normalize?
         "Yes", # INVERT?
         "No", #Exclude blank edges
-        "Yes", #Automask
-        "Yes", # Autocenter
+        automask_text, #Automask
+        autocenter_text, # Autocenter
         "No", # Dump Dats
         "No.dat", # Datfilename,
         "1", # max threads
@@ -251,13 +274,21 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
     out,_ = p.communicate(input=input.encode('utf-8'))
     log.info(out.decode('utf-8'))
 
-def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32, working_directory = "~"):
+def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32, working_directory = "~", automask = False, autocenter = True):
     import time
     start_time = time.time()
     start = process_number*particles_per_process+1
     stop = (process_number+1)*particles_per_process
     if stop > particle_count:
         stop = particle_count
+
+    automask_text = "No"
+    if automask == True:
+        automask_text = "Yes"
+    autocenter_text = "No"
+    if autocenter == True:
+        autocenter_text = "Yes"
+
     input = "\n".join([
         input_stack, # Input MRCS stack
         input_star_filename, # Input Star file
@@ -282,12 +313,13 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         "Yes", #Normalize
         "Yes", #invert
         "No", # Exclude blank edges
-        "Yes", #Automask
-        "Yes", #Autocenter
+        automask_text, #Automask
+        autocenter_text, #Autocenter
         "Yes", #Dump Dat
         "dump_file_{0}.dat".format(process_number+1),
         "1", # Max threads
     ])
+
     # if process_number=0:
     #     log.info(input)
     p = subprocess.Popen("refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)

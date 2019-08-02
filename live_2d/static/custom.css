@@ -58,7 +58,7 @@ body, html {
 }
 
 #left, #right {
-  max-height:80vh;
+  max-height:95vh;
   overflow-y: scroll;
 }
 }

@@ -1,5 +1,5 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import datetime
 from functools import partial
 import json
@@ -16,7 +16,7 @@ from tornado.web import Application, RequestHandler, StaticFileHandler
 from tornado.websocket import WebSocketHandler, WebSocketClosedError
 import uvloop
 
-from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger
+from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger, update_config_from_warp
 import processing_functions
 
 define('port', default=8181, help='port to listen on')
@@ -55,25 +55,20 @@ class SocketHandler(WebSocketHandler):
             print(config["job_status"])
             if config['job_status'] == "running":
                 return_data = {"type":"alert", "data": "You tried to run a job when a job is already running"}
-                self.write_message(return_data)
+                await self.write_message(return_data)
             elif config['job_status'] == "killed":
                 return_data = {"type":"alert", "data": "The job has been killed and will finish at the end of this cycle, which may take a few minutes. Once it is stopped you can begin again."}
-                self.write_message(return_data)
+                await self.write_message(return_data)
                 # TODO: offer to hard kill the job, and warn user that this may significantly impact project directory.
             elif config['job_status'] == "stopped" or config['job_status'] == "listening":
-                try:
-                    assert os.path.isfile(os.path.join(config["warp_folder"], f"allparticles_{data['neural_net']}.star"))
-                    config["job_status"] = "running"
-                    return_data = await update_settings(config, data)
-                    for con in clients:
-                        con.write_message(return_data)
-                    return_data_2 = {"type": "job_started"}
-                    self.write_message(return_data_2)
-                    loop = tornado.ioloop.IOLoop.current()
-                    loop.add_callback(execute_job_loop, config)
-                except AssertionError:
-                    log.error("Tried to switch neural nets to one that doesn't have picked particles")
-                    self.write_message({"type": "alert", "data": f"{data['neural_net']} doesn't have picked particles. Listen commabd has been aborted."})
+                config["job_status"] = "running"
+                return_data = await update_settings(config, data)
+                await message_all_clients(return_data)
+                return_data_2 = {"type": "job_started"}
+                await self.write_message(return_data_2)
+                loop = tornado.ioloop.IOLoop.current()
+                loop.add_callback(execute_job_loop, config)
+
             else:
                 log.info("Malformed job status - didn't start job")
             pass
@@ -81,14 +76,10 @@ class SocketHandler(WebSocketHandler):
             if config["job_status"] == "stopped":
                 config["job_status"]="listening"
                 config["counting"] = False
-                try:
-                    assert os.path.isfile(os.path.join(config["warp_folder"], f"allparticles_{data['neural_net']}.star"))
-                    return_data = await update_settings(config, data)
-                    self.write_message({"type":"alert","data":"Listening for new particles"})
-                    await message_all_clients(return_data)
-                except AssertionError:
-                    log.error("Tried to switch neural nets to one that doesn't have picked particles")
-                    self.write_message({"type": "alert", "data": f"{data['neural_net']} doesn't have picked particles. Listen commabd has been aborted."})
+                return_data = await update_settings(config, data)
+                await self.write_message({"type":"alert","data":"Listening for new particles"})
+                await message_all_clients(return_data)
+
         elif type == 'kill_job':
             # WAIT FOR COUNTING TO FINISH IN CASE A JOB FAILS TO FINISH.
             while config["counting"]:
@@ -99,7 +90,7 @@ class SocketHandler(WebSocketHandler):
                 await message_all_clients({"type": "kill_received"})
             elif config["job_status"] == "listening" and not config["counting"]:
                 config["job_status"] = "stopped"
-                self.write_message({"type": "alert", "data": "Stopped listening"})
+                await self.write_message({"type": "alert", "data": "Stopped listening"})
                 message = {}
                 message["type"] = "settings_update"
                 message["settings"] = await generate_settings_message(config)
@@ -109,17 +100,17 @@ class SocketHandler(WebSocketHandler):
         elif type == 'get_gallery':
             print(data)
             return_data = await get_new_gallery(config, data)
-            self.write_message(return_data)
+            await self.write_message(return_data)
         elif type == 'initialize':
             return_data = await initialize(config)
-            self.write_message(return_data)
+            await self.write_message(return_data)
             pass
         elif type == 'change_directory':
             print(data)
             config_accepted = change_warp_directory(data, config)
             log.info(f"Trying to change to folder {data}")
             if not config_accepted:
-                self.write_message({"type": "alert", "data": "The folder you selected doesn't have a previous.settings file from a warp job, so the change was aborted"})
+                await self.write_message({"type": "alert", "data": "The folder you selected doesn't have a previous.settings file from a warp job, so the change was aborted"})
             else:
                 initialize_logger(config)
                 log.info(f"Changing to the new warp directory: {config['warp_folder']}")
@@ -130,7 +121,7 @@ class SocketHandler(WebSocketHandler):
                 dump_json(config)
         else:
             print(message)
-            self.write_message({"type":"alert", "data": "The backend doesn't understand that message"})
+            await self.write_message({"type":"alert", "data": "The backend doesn't understand that message"})
             pass
 
     def on_close(self):
@@ -165,10 +156,10 @@ async def listen_for_particles(config, clients):
     config["counting"] = True
     if config["cycles"]:
         particle_count_to_fire = int(config["settings"]["particle_count_update"])
-        current_particle_count = 0
+        current_particle_count = config["cycles"][-1]["particle_count"]
     else:
         particle_count_to_fire = int(config["settings"]["particle_count_initial"])
-        current_particle_count = config["cycles"][-1]["particle_count"]
+        current_particle_count = 0
     warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
     new_particle_count = await processing_functions.particle_count_difference(warp_stack_filename, current_particle_count)
     log.info(f"New Particles Detected: {new_particle_count}")
@@ -186,11 +177,12 @@ async def listen_for_particles(config, clients):
 
 
 async def execute_job_loop(config):
-    """The main job loop. Should really only be run from a ThreadPoolExecutor or you will block the app for a LONG time."""
+    """The main job loop. Should really only be run from a ProcessPoolExecutor or you will block the app for a LONG time."""
     log = logging.getLogger("live_2d")
     try:
         loop = tornado.ioloop.IOLoop.current()
-        executor = ThreadPoolExecutor(max_workers=1)
+        executor = ProcessPoolExecutor(max_workers=1)
+        executor2 = ThreadPoolExecutor(max_workers=1)
         process_count = int(config["process_count"])
         working_directory = config["working_directory"]
         os.chdir(working_directory)
@@ -213,8 +205,13 @@ async def execute_job_loop(config):
             start_cycle_number = int(config["cycles"][-1]["number"])
         # Import particles
         # log.info("importing particles")
-        total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"]))
+        log.info(config["next_run_new_particles"])
+        assert update_config_from_warp(config)
+        log.info(config["next_run_new_particles"])
+        total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
+
         config["next_run_new_particles"] = False
+        dump_json(config)
         # Generate new classes
         if config["force_abinit"]:
             log.info("Classification type choice is disregarded because ab initio classification is required for these user settings.")
@@ -236,7 +233,7 @@ async def execute_job_loop(config):
             log.info("============================")
             log.info("Preparing Initial 2D Classes")
             log.info("============================")
-            await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = working_directory))
+            await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"]))
 
             await loop.run_in_executor(executor, processing_functions.make_photos,"cycle_{}".format(start_cycle_number),working_directory)
             classified_count_per_class = [0]*(int(config["settings"]["class_number"])+1) # All classes are empty for the initialization!
@@ -269,8 +266,8 @@ async def execute_job_loop(config):
                 log.info("Fraction of Particles: {0:.2}".format(class_fraction))
                 log.info(f"Dispatching job at {datetime.datetime.now()}")
                 pool = multiprocessing.Pool(processes=process_count)
-                refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = working_directory)
-                results_list = await loop.run_in_executor(executor, pool.map, refine_job, range(process_count))
+                refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
+                results_list = await loop.run_in_executor(executor2, pool.map, refine_job, range(process_count))
 
                 pool.close()
                 log.info(results_list[0].decode('utf-8'))
@@ -308,8 +305,8 @@ async def execute_job_loop(config):
             log.info("Fraction of Particles: {0:.2}".format(class_fraction))
             log.info(f"Dispatching job at {datetime.datetime.now()}")
             pool = multiprocessing.Pool(processes=int(config["process_count"]))
-            refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = working_directory)
-            results_list = await loop.run_in_executor(executor,pool.map,refine_job, range(process_count))
+            refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
+            results_list = await loop.run_in_executor(executor2,pool.map,refine_job, range(process_count))
             pool.close()
             log.info(results_list[30].decode('utf-8'))
             await loop.run_in_executor(executor, partial(processing_functions.merge_2d_subjob, filename_number, process_count=int(config["process_count"])))
