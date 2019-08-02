@@ -4,6 +4,8 @@
   "process_count": 32,
   "settings": {
       "neural_net": "GenentechNet2Mask_20190627",
+      "box_size": "200",
+      "warp_cutoff_value": "0.50",
       "pixel_size": "1.2007",
       "mask_radius": "150",
       "high_res_initial": "40",
