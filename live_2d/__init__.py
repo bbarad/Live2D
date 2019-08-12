@@ -36,7 +36,9 @@ print("configloaded")
 class_path_dict = {"path": os.path.join(config["working_directory"], "class_images")}
 
 class SocketHandler(WebSocketHandler):
+    """Primary Web Server control class - every new client will make initialize of these classes. Extends the standard WebSocketHandler from Tornado"""
     def open(self):
+        """There is a global clients set, which is kept up by the open and close functions (and the message_all_clients function)."""
         # message_data = initialize_data()
         clients.add(self)
         print("Socket Opened from {}".format(self.request.remote_ip))
@@ -125,17 +127,20 @@ class SocketHandler(WebSocketHandler):
             pass
 
     def on_close(self):
+        """Remove sockets from the clients list to minimize errors."""
         clients.remove(self)
         print("Socket Closed from {}".format(self.request.remote_ip))
 
 class IndexHandler(RequestHandler):
     def get(self):
+        """Minimal handler for setting up the very first connection via an HTTP request before setting up the websocket connection for all future interactions."""
         self.render("index.html")
 
 # class GalleryHandler(RequestHandler):
 #     def get(self):
 #         pass
 async def tail_log(config, clients = None, line_count = 1000):
+    """Grab the last 1000 lines of the logfile via a subprocess call, then send it as text to the console on the """
     logfile = os.path.join(config["working_directory"], config["logfile"])
     out = await asyncio.create_subprocess_shell("/usr/bin/tail -n {} {}".format(line_count, logfile), shell=True, stdout=asyncio.subprocess.PIPE)
     stdout,_ = await out.communicate()
@@ -145,6 +150,7 @@ async def tail_log(config, clients = None, line_count = 1000):
     await message_all_clients(console_message)
 
 async def listen_for_particles(config, clients):
+    """Measure the number of particles in the allparticles_ stack and compare it to the last classification cycle to determine how many new particles are present. If the number is greater than the user-set thresholds, send out a classification job."""
     print("Listening for Particles?")
     if not config["job_status"] == "listening":
         print("not set to listening")
@@ -160,24 +166,30 @@ async def listen_for_particles(config, clients):
     else:
         particle_count_to_fire = int(config["settings"]["particle_count_initial"])
         current_particle_count = 0
-    warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
-    new_particle_count = await processing_functions.particle_count_difference(warp_stack_filename, current_particle_count)
-    log.info(f"New Particles Detected: {new_particle_count}")
-    print(new_particle_count)
-    if new_particle_count >= particle_count_to_fire:
-        log.info(f"Job triggering automatically as {new_particle_count} particles have been added by Warp since last import.")
-        config["job_status"] = "running"
-        message = {}
-        message["type"] = "settings_update"
-        message["settings"] = await generate_settings_message(config)
-        await message_all_clients(message)
-        loop = tornado.ioloop.IOLoop.current()
-        loop.add_callback(execute_job_loop, config)
-    config["counting"] = False
+    try:
+        warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
+        new_particle_count = await processing_functions.particle_count_difference(warp_stack_filename, current_particle_count)
+        log.info(f"New Particles Detected: {new_particle_count}")
+        print(new_particle_count)
+        if new_particle_count >= particle_count_to_fire:
+            log.info(f"Job triggering automatically as {new_particle_count} particles have been added by Warp since last import.")
+            config["job_status"] = "running"
+            message = {}
+            message["type"] = "settings_update"
+            message["settings"] = await generate_settings_message(config)
+            await message_all_clients(message)
+            loop = tornado.ioloop.IOLoop.current()
+            loop.add_callback(execute_job_loop, config)
+            config["counting"] = False
+    except Exception:
+        log.error("Automated Particle Counting and Job Submission Failed")
+        config["counting"] = False
+        raise
+
 
 
 async def execute_job_loop(config):
-    """The main job loop. Should really only be run from a ProcessPoolExecutor or you will block the app for a LONG time."""
+    """The main job loop. Sends out processpoolexecutors where possible (and threadpoolexecutors elsewhere)."""
     log = logging.getLogger("live_2d")
     try:
         loop = tornado.ioloop.IOLoop.current()
@@ -333,6 +345,12 @@ async def execute_job_loop(config):
         await message_all_clients(return_message)
     except Exception:
         log.exception("Job Loop Failed")
+        if config["kill_job"]:
+            config["job_status"] = "stopped"
+            config["kill_job"] = False
+        else:
+            config["job_status"] = "listening"
+            config["kill_job"] = False
         raise
 
 async def message_all_clients(message):

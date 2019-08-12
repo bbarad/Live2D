@@ -8,7 +8,9 @@
 *.star
 *.dff
 *.png
-
+live_2d/latest_run.json
+live_2d/static/example
+*.txt
 
 
 # Python Files
