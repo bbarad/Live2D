@@ -19,10 +19,10 @@ Clone this repository.
 
 Edit your `.bashrc` or `.zshrc` to ensure that the default shell has `refine2d` and `merge2d` in the `$PATH`.
 
-```
+```bash
 cd $REPOSITORY
 pip install requirements.txt
-cd $live_2d
+cd ./live_2d
 cp latest_run.json.template latest_run.json
 ```
 
@@ -31,11 +31,11 @@ You may want to edit `latest_run.json` and modify `process_number` - this is the
 ### Running the server
 The application runs via a [Tornado](https://www.tornadoweb.org/en/stable/) server in python. By default, the application runs on port `8181`. This behavior is user configurable. The server must be run by a user with read and write permissions to the folder that Warp is working in.
 
-```
+```bash
 python3 live_2d/__init__.py
 ```
 or
-```
+```bash
 python3 live_2d/__init__.py --port=$LIVE2D_PORT
 ```
 
@@ -54,9 +54,9 @@ One a warp folder is successfully opened, most 2d classification-related setting
 ### Starting a job
 
 Three buttons are available: __Start Job Now__, __Start Automatic Jobs__, and __Stop All Jobs__.
-* __Start Job Now__ sends user-chosen settings to the server and then triggers an immediate 2D classification job, which iteratively runs `refine2d` at different resolution cutoffs and subsets of particles, mimicking the behavior of the 2D classification job in the cisTEM GUI. When this kind of job finishes, automatic jobs are automatically started.
-* __Start Automatic Jobs__ sends user-chosen settings to the server and then tells the server to begin watching for new particles being picked by Warp. The server will trigger jobs automatically at regular intervals (which can be changed in the __Expert Settings__ tab).
-* __Stop All Jobs__ immediately stops the system from watching for new particles from Warp, and will end any currently running jobs after the next iteration of `refine2d`. This can take a long time when many particles have been picked by warp, but in order to avoid unexpected behaviors, there is no current way to kill a job in the middle of a `refine2d` iteration. Killing and restarting the server will stop a job mid-run, but do this at your own risk! There is a chance damage the configuration settings file for the server, requiring manual       fixes                    
+- __Start Job Now__ sends user-chosen settings to the server and then triggers an immediate 2D classification job, which iteratively runs `refine2d` at different resolution cutoffs and subsets of particles, mimicking the behavior of the 2D classification job in the cisTEM GUI. When this kind of job finishes, automatic jobs are automatically started.
+- __Start Automatic Jobs__ sends user-chosen settings to the server and then tells the server to begin watching for new particles being picked by Warp. The server will trigger jobs automatically at regular intervals (which can be changed in the __Expert Settings__ tab).
+- __Stop All Jobs__ immediately stops the system from watching for new particles from Warp, and will end any currently running jobs after the next iteration of `refine2d`. This can take a long time when many particles have been picked by warp, but in order to avoid unexpected behaviors, there is no current way to kill a job in the middle of a `refine2d` iteration. Killing and restarting the server will stop a job mid-run, but do this at your own risk! There is a chance damage the configuration settings file for the server, requiring manual       fixes                    
 
 Clicking either of the __Start__ buttons will send the settings chosen by user, and are the only time user settings get sent to the server.
 
@@ -70,9 +70,9 @@ The radius of the circular mask applied to the class averages before new rounds 
 
 __Classification Type__  
 This setting switches between 3 macro programs for 2D classification.  
-* _Ab Initio_ - Perform a classification from random seed classes, starting at low resolution (40Å by default) and iteratively increasing the resolution cutoff with a small set of the particles, followed by several rounds of classification with 100% of particles at high resolution (8Å by default). When no previous classes have been calculated for the current set of warp-generated particles, this is the required option. Before classes are clearly resolvable as different views of the target, this is a good default behavior. When an _Ab Initio_ job finishes, the setting for the next automated run is changed to _Seeded Startup_.
-* _Seeded Startup_ - Perform a series of classifications that start at low resolution and iteratively improves, using the most recently generated classes as the starting point for classification, then perform several rounds of classification at the high resolution cutoff. Uses all particles from the beginning, unlike _Ab Initio_. This is the setting that should be used for the majority of the data collection, and is the default after the first job if automatic jobs are run from the beginning. Should not be used until enough particles have been collected to get clearly distinguishable class averages - generally around 50k particles is plenty, and sometimes this setting can be changed sooner than that if the classes look good. When hundreds of thousands to millions of particles have been collected, this setting can begin to take 10+ hours, and if the classes are already very good, new particles can instead be more efficiently incorporated with the _Refinement_ setting.
-* _Refinement_ - Perform a series of classifications with the most recent set of classes as a starting point, with all classifications at the high resolution cutoff and using all particles. High chance of overfitting to local minima - only switch to this when the existing classes are very good and enough particles have been collected that seeded startups are prohibitively slow.
+- _Ab Initio_ - Perform a classification from random seed classes, starting at low resolution (40Å by default) and iteratively increasing the resolution cutoff with a small set of the particles, followed by several rounds of classification with 100% of particles at high resolution (8Å by default). When no previous classes have been calculated for the current set of warp-generated particles, this is the required option. Before classes are clearly resolvable as different views of the target, this is a good default behavior. When an _Ab Initio_ job finishes, the setting for the next automated run is changed to _Seeded Startup_.
+- _Seeded Startup_ - Perform a series of classifications that start at low resolution and iteratively improves, using the most recently generated classes as the starting point for classification, then perform several rounds of classification at the high resolution cutoff. Uses all particles from the beginning, unlike _Ab Initio_. This is the setting that should be used for the majority of the data collection, and is the default after the first job if automatic jobs are run from the beginning. Should not be used until enough particles have been collected to get clearly distinguishable class averages - generally around 50k particles is plenty, and sometimes this setting can be changed sooner than that if the classes look good. When hundreds of thousands to millions of particles have been collected, this setting can begin to take 10+ hours, and if the classes are already very good, new particles can instead be more efficiently incorporated with the _Refinement_ setting.
+- _Refinement_ - Perform a series of classifications with the most recent set of classes as a starting point, with all classifications at the high resolution cutoff and using all particles. High chance of overfitting to local minima - only switch to this when the existing classes are very good and enough particles have been collected that seeded startups are prohibitively slow.
 
 #### Expert Settings
 __Initial High Res Limit__  
@@ -102,7 +102,7 @@ The number of particles per class to be used for the startup runs in _Ab Initio_
 __Automask__  
 This flag tells cisTEM to try to automatically mask class averages.
 
-__Autocenter__
+__Autocenter__  
 This flag tells cisTEM to automatically center class averages to their center of mass.
 
 
