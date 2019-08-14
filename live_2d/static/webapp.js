@@ -136,8 +136,6 @@ $(document).ready(function () {
                     event.preventDefault();
                     $(this).ekkoLightbox({
                       showArrows: false,
-                      width: 300,
-                      height: 300
                     });
     });
   }

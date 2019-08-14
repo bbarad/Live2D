@@ -50,7 +50,17 @@
 }
 
 
+.container-fluid {
+  max-width: 1500px;
+}
+
+
 @media (min-width: 768px) {
+
+.container-fluid {
+  padding-left: 40px;
+  padding-right: 40px;
+}
 body, html {
   margin: 0;
   overflow: hidden;
