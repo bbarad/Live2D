@@ -1,3 +1,18 @@
+"""Live 2D classification
+
+Operate a websocket-driven asynchronous web server to perform 2D classification
+of single particle electron microscopy data in concert with motion correction,
+CTF estimation, and particle picking from Warp.
+
+Uses a subclass of :class:`tornado.socket.WebSocketHandler` to pass messages between server and client.
+Server receives json-formatted messages of the format {"command": command_type, "data": arbitrary_data}
+
+Server sends json-formatted messages with the format {"type": command_type, OTHER_HEADER: other_data, ...}
+
+Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
+
+"""
+
 import asyncio
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import datetime
@@ -36,24 +51,29 @@ print("configloaded")
 class_path_dict = {"path": os.path.join(config["working_directory"], "class_images")}
 
 class SocketHandler(WebSocketHandler):
-    """Primary Web Server control class - every new client will make initialize of these classes. Extends the standard WebSocketHandler from Tornado"""
+    """Primary Web Server control class - every new client will make initialize of these classes.
+    Extends :class:`tornado.websocket.WebSocketHandler`
+
+    """
     def open(self):
-        """There is a global clients set, which is kept up by the open and close functions (and the message_all_clients function)."""
+        """Adds new client to a global clients set when socket is opened."""
         # message_data = initialize_data()
         clients.add(self)
         print("Socket Opened from {}".format(self.request.remote_ip))
 
 
     async def on_message(self, message):
+        """
+        Receives json-formatted messages of the format {"command": command_type, "data": arbitrary_data}
+
+        All messages returned are json-formatted messages with the format {"type": command_type, OTHER_HEADER: other_data, ...}
+        """
         message_json = json.loads(message)
         type = message_json['command']
         data = message_json['data']
         return_data = "Dummy Return"
-        # if type == 'update_settings':
-        #     return_data = await update_settings(config, data)
-        #     for con in clients:
-        #         con.write_message(return_data)
         if type == 'start_job':
+            # Lots of server-side validation that is mirrored client-side.
             print(config["job_status"])
             if config['job_status'] == "running":
                 return_data = {"type":"alert", "data": "You tried to run a job when a job is already running"}
@@ -79,7 +99,7 @@ class SocketHandler(WebSocketHandler):
                 config["job_status"]="listening"
                 config["counting"] = False
                 return_data = await update_settings(config, data)
-                await self.write_message({"type":"alert","data":"Listening for new particles"})
+                await self.write_message({"type":"alert","data":"Waiting for new particles"})
                 await message_all_clients(return_data)
 
         elif type == 'kill_job':
@@ -92,7 +112,7 @@ class SocketHandler(WebSocketHandler):
                 await message_all_clients({"type": "kill_received"})
             elif config["job_status"] == "listening" and not config["counting"]:
                 config["job_status"] = "stopped"
-                await self.write_message({"type": "alert", "data": "Stopped listening"})
+                await self.write_message({"type": "alert", "data": "Stopped waiting for new particles"})
                 message = {}
                 message["type"] = "settings_update"
                 message["settings"] = await generate_settings_message(config)
@@ -121,6 +141,14 @@ class SocketHandler(WebSocketHandler):
                 await message_all_clients({"type":"alert", "data": "Changing warp directory"})
                 await message_all_clients(return_data)
                 dump_json(config)
+        elif type == 'update_settings':
+            if (config["job_status"] == 'stopped' or config["job_status"] == 'listening'):
+                await self.write_message({"type":"alert", "data":"Updating Settings"})
+                return_data = await update_settings(config, data)
+                await message_all_clients(return_data)
+            else:
+                return_data = {"type":"alert", "data": "You can't update settings with jobs running or waiting to kill."}
+                await self.write_message(return_data)
         else:
             print(message)
             await self.write_message({"type":"alert", "data": "The backend doesn't understand that message"})
@@ -180,7 +208,7 @@ async def listen_for_particles(config, clients):
             await message_all_clients(message)
             loop = tornado.ioloop.IOLoop.current()
             loop.add_callback(execute_job_loop, config)
-            config["counting"] = False
+        config["counting"] = False
     except Exception:
         log.error("Automated Particle Counting and Job Submission Failed")
         config["counting"] = False
@@ -345,6 +373,7 @@ async def execute_job_loop(config):
         await message_all_clients(return_message)
     except Exception:
         log.exception("Job Loop Failed")
+        os.chdir(sys.path[0])
         if config["kill_job"]:
             config["job_status"] = "stopped"
             config["kill_job"] = False
