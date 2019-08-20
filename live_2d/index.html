@@ -47,7 +47,7 @@
         </div>
         <!-- Options Pane -->
         <div class="col-md-5 col-xl-4 col-12 order-md-first" id="left">
-          <div class="text-center"><h5>Live 2D Classification on Krios-1</h5></div>
+          <div class="text-center"><h5>Live 2D Classification<span id="microscope-id"></span></h5></div>
           <h5 class="text-center">Job Status: <span id="job-status">Stopped</span></h5>
           <form class="form" id="options-form">
             <div class="form-group">
@@ -68,6 +68,10 @@
                 <button type="button" class="btn btn-danger" id="stop-job" rel="popover" data-trigger="hover" data-placement="top" Title="Stop Job" data-content="Stop a job after the next cycle is complete. Currently users do not have the ability to kill jobs mid-cycle. Does nothing if no job is running." disabled>Stop All Jobs</button>
               </div>
             </div>
+            {# <div class="btn-toolbar my-2">
+              <button disabled type="button" class="btn btn-block btn-primary" id="update-settings" rel="popover" data-trigger="hover" data-placement="top" Title="Update Settings" data-content="Send the user-selected settings to the server without starting any jobs.">Update Settings</button>
+            </div> #}
+            <div class="font-weight-light" id="setting-update-info" style='display: none'>To change settings, first stop any running jobs.</div>
             <hr>
             <div id="subleft">
               <div>
@@ -135,7 +139,7 @@
                     </div>
                     <div class="col-lg">
                       <div class="form-group form-group-inline">
-                        <label for="pixel-size">Final High Res Limit: </label>
+                        <label for="high-res-final">Final High Res Limit: </label>
                         <div class="input-group mr-2">
                           <input type="text" class="form-control" id="high-res-final" placeholder="8" aria-label="high-res-final">
                           <div class="input-group-append"><span class="input-group-text" id=final-high-res-unit>Å</span></div>

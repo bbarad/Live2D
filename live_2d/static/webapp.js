@@ -112,9 +112,13 @@ $(document).ready(function () {
           ws.send(JSON.stringify(message));
         }
       });
-                  // message = {"command": "change_directory", "data": $("#warp-directory").val()};
-                  // console.log(message);
     });
+
+    // $(document).off('click',"#update-settings");
+    // $(document).on('click', '#update-settings', function(event) {
+    //   message = send_settings();
+    //   ws.send(JSON.stringify(message));
+    // });
 
 
     $(document).off('click',"[class*='page-link']");
@@ -185,6 +189,8 @@ $(document).ready(function () {
         $("#job-status").html("Running");
         $( "#update-warp-directory" ).prop( "disabled", true );
         $('#update-warp_directory').popover('hide');
+        // $( "#update-settings" ).prop( "disabled", true );
+        // $("#update-settings").popover('hide');
         $( "#start-job" ).prop( "disabled", true );
         $('#start-job').popover('hide');
         $( "#start-listening" ).prop( "disabled", true );
@@ -195,17 +201,19 @@ $(document).ready(function () {
       case "listening":
         $("#job-status").html("Waiting for New Particles");
         $( "#update-warp-directory" ).prop( "disabled", true );
+        // $( "#update-settings" ).prop( "disabled", false );
         $( "#start-job" ).prop( "disabled", false );
         $( "#start-listening" ).prop( "disabled", true );
         $('#start-listening').popover("hide");
         $( "#stop-job" ).prop( "disabled", false );
-        enable_form();
+        disable_form();
         // $('#stop-job').popover('hide');
         break;
       case "stopped":
         $("#job-status").html("Ready for New Runs");
         $( "#update-warp-directory" ).prop( "disabled", false );
         $("#update-warp-directory").popover("hide");
+        // $( "#update-settings" ).prop( "disabled", false );
         $( "#start-job" ).prop( "disabled", false );
         $( "#start-listening" ).prop( "disabled", false );
         $( "#stop-job" ).prop( "disabled", true );
@@ -216,6 +224,8 @@ $(document).ready(function () {
         $("#job-status").html("Waiting to Kill");
         $( "#update-warp-directory" ).prop( "disabled", true );
         $("#update-warp-directory").popover('hide');
+        // $( "#update-settings" ).prop( "disabled", true );
+        // $("#update-settings").popover('hide');
         $( "#start-job" ).prop( "disabled", true );
         $('#start-job').popover('hide');
         $( "#start-listening" ).prop( "disabled", true );
@@ -235,17 +245,26 @@ $(document).ready(function () {
 
   function disable_form () {
     console.log($('#subleft input'))
+    $('#setting-update-info').toggle(true);
     $("#subleft input").each(function() {$(this).attr("disabled", true);});
     $("#subleft label").each(function() {$(this).attr("disabled", true);});
   }
   function enable_form() {
     console.log("#subleft input")
+    $('#setting-update-info').toggle(false);
     $("#subleft input").each(function() {$(this).attr("disabled", false);});
     $("#subleft label").each(function() {$(this).attr("disabled", false);});
     $("input[name='classification-type']:checked").click()
   }
   function change_warp_directory(directory) {
     message = {command: "change_directory", data: directory};
+    return message;
+  }
+
+  function send_settings() {
+    message = {command: "update_settings",
+              data: prepare_settings()
+    };
     return message;
   }
 
@@ -256,18 +275,20 @@ $(document).ready(function () {
     return message;
   }
 
-    function send_settings_and_start_listening() {
-      message = {command: "listen",
-                data: prepare_settings()
-      }
-      return message;
-      }
+  function send_settings_and_start_listening() {
+    message = {command: "listen",
+              data: prepare_settings()
+    }
+    return message;
+  }
+
   function get_console_from_server(data) {
     $("#console").html(data)
   }
 
   function update_class_gallery(data) {
-    $('nav *').tooltip('hide')
+    $('nav *').tooltip('hide');
+    $('img').tooltip('hide');
     // bootbox.alert("gallery data "+data)
     $("#class-gallery").html(data);
     $('[data-toggle="tooltip"]').tooltip(
@@ -282,21 +303,33 @@ $(document).on('click', '#classification-type label', function(event) {
   switch (refinement_type_selected) {
     case "abinit":
       $("#startup-cycle-count").attr("disabled", false);
+      $("label[for='startup-cycle-count']").attr("disabled", false);
       $("#high-res-initial").attr("disabled", false);
+      $("label[for='high-res-initial']").attr("disabled", false);
       $("#number-per-class").attr("disabled", false);
+      $("label[for='number-per-class']").attr("disabled", false);
       $("#number-classes").attr("disabled", false);
+      $("label[for='number-classes']").attr("disabled", false);
       break;
     case "seeded":
       $("#startup-cycle-count").attr("disabled", false);
+      $("label[for='startup-cycle-count']").attr("disabled", false);
       $("#high-res-initial").attr("disabled", false);
+      $("label[for='high-res-initial']").attr("disabled", false);
       $("#number-per-class").attr("disabled", true);
+      $("label[for='number-per-class']").attr("disabled", true);
       $("#number-classes").attr("disabled", true);
+      $("label[for='number-classes']").attr("disabled", true);
       break;
     case "refine":
       $("#startup-cycle-count").attr("disabled", true);
+      $("label[for='startup-cycle-count']").attr("disabled", true);
       $("#high-res-initial").attr("disabled", true);
+      $("label[for='high-res-initial']").attr("disabled", true);
       $("#number-per-class").attr("disabled", true);
+      $("label[for='number-per-class']").attr("disabled", true);
       $("#number-classes").attr("disabled", true);
+      $("label[for='number-classes']").attr("disabled", true);
       break;
   }
 

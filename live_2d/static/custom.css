@@ -1,4 +1,6 @@
-
+label[disabled="disabled"]{
+    color: #AAA;
+}
 
 /* .mrc-gallery {
   background-color: #eee;
@@ -54,7 +56,6 @@
   max-width: 1500px;
 }
 
-
 @media (min-width: 768px) {
 
 .container-fluid {
@@ -68,8 +69,9 @@ body, html {
 }
 
 #left, #right {
-  padding: 2.5vh;
-  max-height:95vh;
+  padding: 2vh;
+  max-height:97vh;
   overflow-y: scroll;
+  overflow-wrap: break-word
 }
 }
