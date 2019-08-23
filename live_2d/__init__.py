@@ -35,13 +35,17 @@ from controls import initialize, load_config, get_new_gallery, dump_json, update
 import processing_functions
 
 define('port', default=8181, help='port to listen on')
+define('listening_period_ms', default=120000, help='How long to wait between automatic job trigger checks, in ms')
+define('tail_log_period_ms', default=15000, help='How long to wait between sending the latest log lines to the clients, in ms')
 # Settings related to actually operating the webpage
 settings = {
     "websocket_ping_interval": 30,
     # "static_hash_cache": False
 }
-starting_directory = os.getcwd()
-config = load_config(os.path.join(sys.path[0],'latest_run.json'))
+
+
+starting_directory = os.path.realpath(sys.path[0])
+config = load_config(os.path.join(starting_directory,'latest_run.json'))
 log = initialize_logger(config)
 config["job_status"] = "stopped"
 config["kill_job"] = False
@@ -67,6 +71,9 @@ class SocketHandler(WebSocketHandler):
         Receives json-formatted messages of the format {"command": command_type, "data": arbitrary_data}
 
         All messages returned are json-formatted messages with the format {"type": command_type, OTHER_HEADER: other_data, ...}
+
+        Args:
+            message (stream object): JSON-encoded message from a client.
         """
         message_json = json.loads(message)
         type = message_json['command']
@@ -367,13 +374,13 @@ async def execute_job_loop(config):
         else:
             config["job_status"] = "listening"
             config["kill_job"] = False
-        os.chdir(sys.path[0])
+        os.chdir(starting_directory)
         log.info("Done with job - sending result to all clients")
         return_message = await generate_job_finished_message(config)
         await message_all_clients(return_message)
     except Exception:
         log.exception("Job Loop Failed")
-        os.chdir(sys.path[0])
+        os.chdir(starting_directory)
         if config["kill_job"]:
             config["job_status"] = "stopped"
             config["kill_job"] = False
@@ -404,10 +411,10 @@ def main():
     app.listen(options.port)
     print('Listening on http://localhost:%i' % options.port)
 
-    tailed_callback = tornado.ioloop.PeriodicCallback(lambda: tail_log(config, clients), 10000)
+    tailed_callback = tornado.ioloop.PeriodicCallback(lambda: tail_log(config, clients), options.tail_log_period_ms)
     tailed_callback.start()
 
-    listening_callback = tornado.ioloop.PeriodicCallback(lambda: listen_for_particles(config, clients), 120000)
+    listening_callback = tornado.ioloop.PeriodicCallback(lambda: listen_for_particles(config, clients), options.listening_period_ms)
 
     listening_callback.start()
 
