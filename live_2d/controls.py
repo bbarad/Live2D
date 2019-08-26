@@ -244,9 +244,9 @@ async def generate_job_finished_message(config):
     Create a response message to send to clients that updates client-side settings with server-side settings
 
     Args:
-        config(dict): Global settings and results object
+        config (dict): Global settings and results object
     Returns:
-        message(dict): JSON-style message that will be encoded and sent to clients with current server-side processing settings.
+        dict: JSON-style message that will be encoded and sent to clients with current server-side processing settings.
     """
     message = {}
     message["type"] = "settings_update"
@@ -258,10 +258,10 @@ async def get_new_gallery(config, data):
     Create a response message to send to clients that updates client-side settings with gallery HTML
 
     Args:
-        config(dictionary): the Global settings and results object
-        data(dictionary): the data component of the JSON object recieved from clients. data["gallery_number"] is the gallery number reference needed to return a selected gallery.
+        config (dict): Global settings and results object
+        data (dict): Data component of the JSON object recieved from clients. data["gallery_number"] is the gallery number reference needed to return a selected gallery.
     Returns:
-        message(dictionary): a JSON-style message that includes raw HTML to replace the current shown gallery with a new one
+        dict: JSON-style message that includes raw HTML to replace the current shown gallery with a new one
     """
     message = {}
     message["type"] = "gallery_update"
@@ -274,7 +274,7 @@ def dump_json(config):
     Save the config file to JSON in two locations - one in the working directory, and one wherever the server script is run.
 
     Args:
-        config (dictionary): the Global settings and results object to save.
+        config (dict): Global settings and results object to save.
     """
     with open(os.path.join(os.path.realpath(sys.path[0]),"latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
@@ -286,10 +286,10 @@ async def update_settings(config, data):
     Update settings sent by the client and generate a response message with the new settings incorporated.
 
     Args:
-        config(dictionary): the Global settings and results object
-        data(dictionary): new settings sent by the client in JSON format
+        config (dict): Global settings and results object
+        data (dict): New settings sent by the client in JSON format
     Returns:
-        message(dictionary): a JSON-style message that will be encoded and sent to clients with current server-side processing settings.
+        dict: JSON-style message that will be encoded and sent to clients with current server-side processing settings.
     """
     for key in config["settings"].keys():
         try:
@@ -303,6 +303,15 @@ async def update_settings(config, data):
     return message
 
 async def generate_settings_message(config):
+    """
+    Generate JSON message to send current settings to client.
+
+    Args:
+        config (dict): Global settings object
+
+    Returns:
+        dict: JSON-style message for clients
+    """
     message = {}
     message["settings"] = config["settings"]
     message["warp_folder"] = config["warp_folder"]
@@ -312,6 +321,16 @@ async def generate_settings_message(config):
 
 
 async def generate_gallery_html(config, gallery_number_selected = -1):
+    """
+    Generate HTML for a specified gallery.
+
+    Args:
+        config (dict): Global settings object
+        gallery_number_selected (int): Gallery number to load
+
+    Returns:
+        str: HTML for specified gallery to send to clients
+    """
     # Catch new cycles
     if not config["cycles"]:
         return "<h3 class='text-center my-2'>New Classes Will Populate in This Tab</h3>"

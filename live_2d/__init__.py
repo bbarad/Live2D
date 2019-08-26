@@ -3,17 +3,18 @@
 Startup: ``python __init__.py --port=8181``
 
 Operate a websocket-driven asynchronous web server to perform 2D classification
-of single particle electron microscopy data in concert with motion correction,
-CTF estimation, and particle picking from Warp.
+of single particle electron microscopy data using cisTEM_ in concert with motion correction, CTF estimation, and particle picking from Warp_.
 
-Uses a subclass of :py:class:`tornado.socket.WebSocketHandler` to pass messages between server and client.
-Server receives json-formatted messages of the format ``{"command": command_type, "data": arbitrary_data}``
+Uses a subclass of :py:class:`tornado.websocket.WebSocketHandler` to pass messages between server and client. Server receives json-formatted messages of the format ``{"command": command_type, "data": arbitrary_data}``
 
 Server sends json-formatted messages with the format ``{"type": command_type, OTHER_HEADER: other_data, ...}``
 
 **Documentation**:``../readme.md`` contains an extended user guide. ``../docs/`` contains technical documentation.
 
 Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
+
+.. _Warp: http://www.warpem.com/warp/
+.. _cisTEM: https://cistem.org/
 """
 
 import asyncio
