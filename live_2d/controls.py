@@ -1,3 +1,11 @@
+"""Server controls for Live 2D Classification
+===============================================
+This is a group of utility functions for the Live 2D Classification webserver related to handling of websocket messages and manipulation of settings as stored in the config dictionary/JSON file.
+
+Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
+"""
+
+
 import asyncio
 import base64
 import json
@@ -10,7 +18,15 @@ import tornado.template
 loader = tornado.template.Loader(".")
 # import processing_functions
 log = logging.getLogger("live_2d")
+
 def initialize_logger(config):
+    """
+    Initializes the app logger to print to STDOUT and also to a logfile.
+    Args:
+        config (dict): Global settings and results object
+    Returns:
+        :py:class:`logging.Logger`: logger that prints to a logfile and to ``STDOUT``.
+    """
     log = logging.getLogger("live_2d")
     for handler in log.handlers:
         log.removeHandler(handler)
@@ -32,15 +48,38 @@ def initialize_logger(config):
 
 # Configuration of live processing settings
 def print_config(config):
+    """
+    Utility one-liner to pretty-print the current config
+
+    Args:
+        config (dict): Global settings and results object
+    """
     print(json.dumps(config, indent=2))
 
 def load_config(filename="latest_run.json"):
+    """
+    Load config from JSON file
+
+    Args:
+        filename (str): JSON file with live_2d state information.
+
+    Returns:
+        dict: Global settings and results object
+    """
     with open(filename) as configfile:
         config = json.load(configfile)
     # print_config(config)
     return config
 
 def update_config_from_warp(config):
+    """
+    Attempt to get the latest warp settings from the previous.settings folder and update the config accordingly.
+    If any of ``box_size``, ``neural_net``, or ``warp_value_cutoff`` are changed, config will force abinit and full particle import next run, as the particle stack may have changed too much to reuse particles or classes.
+    Args:
+        config (dict): Global settings and results object
+    Returns:
+        bool: ``true`` if the config is successfully updated, ``false`` if the warp settings file is not compatible with live2d
+    """
     settingsfile = os.path.join(config["warp_folder"], "previous.settings")
     assert os.path.isfile(settingsfile)
     tree = ET.parse(settingsfile)
@@ -79,6 +118,14 @@ def update_config_from_warp(config):
 
 
 def create_new_config(warp_folder, working_directory):
+    """
+    Generate a new config file when needed
+    Args:
+        warp_folder (str): Folder where warp will output.
+        working_directory (str): Folder where classification will output.
+    Returns:
+        dict: New Global settings and results object.
+    """
     # may want to change this to a template file processed by tornado eventually, easier to keep up to date.
     settingsfile = os.path.join(warp_folder, "previous.settings")
     tree = ET.parse(settingsfile)
@@ -93,6 +140,7 @@ def create_new_config(warp_folder, working_directory):
 
     try:
         mask_radius = root.find("Picking/*[@Name='Diameter']").get("Value")
+        mask_radius = mask_radius*.75 # particle diameter / 2 for radius, then multiply by 1.5 for mask space.
     except:
         log.error("Mask Radius could not be extracted.")
         return False
@@ -140,6 +188,18 @@ def create_new_config(warp_folder, working_directory):
 
 
 def change_warp_directory(warp_folder, config):
+    """
+    Change the config file to a new warp folder for a different data collection.
+
+    Triggered by the websocket logic for `Update Warp Directory` button
+
+    Args:
+        warp_folder (str): New warp folder as submitted by a client.
+        config (dict): Global settings and results object that will be replaced.
+    Returns:
+        bool: ``true`` if the new config was successfully loaded or generated,
+        ``false`` otherwise
+    """
     if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
         log.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder.")
         return False
@@ -164,7 +224,15 @@ def change_warp_directory(warp_folder, config):
     return True
 
 
-async def initialize(config = load_config()):
+async def initialize(config):
+    """
+    Create a response message to send to clients that will include the most recent gallery and the current settings.
+
+    Args:
+        config (dict): Global settings and results object
+    Returns:
+        dict: JSON-style message that will be encoded and sent to clients with current gallery HTML and current server-side processing settings.
+    """
     message = {}
     message["type"] = "init"
     message["gallery_data"] = await generate_gallery_html(config)
@@ -172,12 +240,29 @@ async def initialize(config = load_config()):
     return message
 
 async def generate_job_finished_message(config):
+    """
+    Create a response message to send to clients that updates client-side settings with server-side settings
+
+    Args:
+        config(dict): Global settings and results object
+    Returns:
+        message(dict): JSON-style message that will be encoded and sent to clients with current server-side processing settings.
+    """
     message = {}
     message["type"] = "settings_update"
     message["settings"] = await generate_settings_message(config)
     return message
 
 async def get_new_gallery(config, data):
+    """
+    Create a response message to send to clients that updates client-side settings with gallery HTML
+
+    Args:
+        config(dictionary): the Global settings and results object
+        data(dictionary): the data component of the JSON object recieved from clients. data["gallery_number"] is the gallery number reference needed to return a selected gallery.
+    Returns:
+        message(dictionary): a JSON-style message that includes raw HTML to replace the current shown gallery with a new one
+    """
     message = {}
     message["type"] = "gallery_update"
     message["gallery_data"] = await generate_gallery_html(config, gallery_number_selected = int(data["gallery_number"]))
@@ -185,12 +270,27 @@ async def get_new_gallery(config, data):
 
 # This should not be async - I don't want a single other thing happening when I write out.
 def dump_json(config):
-    with open(os.path.join(sys.path[0],"latest_run.json"), "w") as jsonfile:
+    """
+    Save the config file to JSON in two locations - one in the working directory, and one wherever the server script is run.
+
+    Args:
+        config (dictionary): the Global settings and results object to save.
+    """
+    with open(os.path.join(os.path.realpath(sys.path[0]),"latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
     with open(os.path.join(config["working_directory"], "latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
 
 async def update_settings(config, data):
+    """
+    Update settings sent by the client and generate a response message with the new settings incorporated.
+
+    Args:
+        config(dictionary): the Global settings and results object
+        data(dictionary): new settings sent by the client in JSON format
+    Returns:
+        message(dictionary): a JSON-style message that will be encoded and sent to clients with current server-side processing settings.
+    """
     for key in config["settings"].keys():
         try:
             config["settings"][key] = data[key]

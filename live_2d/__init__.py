@@ -1,16 +1,19 @@
 """Live 2D classification
+===================================
+Startup: ``python __init__.py --port=8181``
 
 Operate a websocket-driven asynchronous web server to perform 2D classification
 of single particle electron microscopy data in concert with motion correction,
 CTF estimation, and particle picking from Warp.
 
-Uses a subclass of :class:`tornado.socket.WebSocketHandler` to pass messages between server and client.
-Server receives json-formatted messages of the format {"command": command_type, "data": arbitrary_data}
+Uses a subclass of :py:class:`tornado.socket.WebSocketHandler` to pass messages between server and client.
+Server receives json-formatted messages of the format ``{"command": command_type, "data": arbitrary_data}``
 
-Server sends json-formatted messages with the format {"type": command_type, OTHER_HEADER: other_data, ...}
+Server sends json-formatted messages with the format ``{"type": command_type, OTHER_HEADER: other_data, ...}``
+
+**Documentation**:``../readme.md`` contains an extended user guide. ``../docs/`` contains technical documentation.
 
 Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
-
 """
 
 import asyncio
@@ -26,7 +29,7 @@ import time
 
 from tornado.httpserver import HTTPServer
 import tornado.ioloop
-from tornado.options import define, options, parse_command_line
+from tornado.options import define, parse_command_line, OptionParser
 from tornado.web import Application, RequestHandler, StaticFileHandler
 from tornado.websocket import WebSocketHandler, WebSocketClosedError
 import uvloop
@@ -34,15 +37,17 @@ import uvloop
 from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger, update_config_from_warp
 import processing_functions
 
-define('port', default=8181, help='port to listen on')
-define('listening_period_ms', default=120000, help='How long to wait between automatic job trigger checks, in ms')
-define('tail_log_period_ms', default=15000, help='How long to wait between sending the latest log lines to the clients, in ms')
-# Settings related to actually operating the webpage
-settings = {
-    "websocket_ping_interval": 30,
-    # "static_hash_cache": False
-}
-
+async def define_options():
+    options = OptionParser()
+    options.define('port', default=8181, type=int, help='port to listen on')
+    options.define('microscope_name', default='Krios', type=str, help='Name of the microscope')
+    options.define('listening_period_ms', default=120000, type=int, help='How long to wait between automatic job trigger checks, in ms')
+    options.define('tail_log_period_ms', default=15000, type=int, help='How long to wait between sending the latest log lines to the clients, in ms')
+    options.define('websocket_ping_interval', default=30, type=int, help='Period between ping pongs to keep connections alive, in seconds', group='settings')
+    # Settings related to actually operating the webpage
+    options.parse_config_file(os.path.join(sys.path[0], "server_settings.conf"), final=False)
+    options.parse_command_line()
+    return options
 
 starting_directory = os.path.realpath(sys.path[0])
 config = load_config(os.path.join(starting_directory,'latest_run.json'))
@@ -56,8 +61,7 @@ class_path_dict = {"path": os.path.join(config["working_directory"], "class_imag
 
 class SocketHandler(WebSocketHandler):
     """Primary Web Server control class - every new client will make initialize of these classes.
-    Extends :class:`tornado.websocket.WebSocketHandler`
-
+    Extends :py:class:`tornado.websocket.WebSocketHandler`
     """
     def open(self):
         """Adds new client to a global clients set when socket is opened."""
@@ -70,7 +74,7 @@ class SocketHandler(WebSocketHandler):
         """
         Receives json-formatted messages of the format {"command": command_type, "data": arbitrary_data}
 
-        All messages returned are json-formatted messages with the format {"type": command_type, OTHER_HEADER: other_data, ...}
+        All messages returned are json-formatted messages with the format ``{"type": command_type, OTHER_HEADER: other_data, ...}``
 
         Args:
             message (stream object): JSON-encoded message from a client.
@@ -167,6 +171,7 @@ class SocketHandler(WebSocketHandler):
         print("Socket Closed from {}".format(self.request.remote_ip))
 
 class IndexHandler(RequestHandler):
+    """Core class to respond to new clients."""
     def get(self):
         """Minimal handler for setting up the very first connection via an HTTP request before setting up the websocket connection for all future interactions."""
         self.render("index.html")
@@ -175,7 +180,12 @@ class IndexHandler(RequestHandler):
 #     def get(self):
 #         pass
 async def tail_log(config, clients = None, line_count = 1000):
-    """Grab the last 1000 lines of the logfile via a subprocess call, then send it as text to the console on the """
+    """Grab the last 1000 lines of the logfile (set in config) via a subprocess call, then send it as text to the console on the webapp.
+
+    Args:
+        config (dict): the global config object
+        clients (dict): dictionary of websockethandler instances that are open, to which the log will be sent.
+        line_count (int): number of lines to tail."""
     logfile = os.path.join(config["working_directory"], config["logfile"])
     out = await asyncio.create_subprocess_shell("/usr/bin/tail -n {} {}".format(line_count, logfile), shell=True, stdout=asyncio.subprocess.PIPE)
     stdout,_ = await out.communicate()
@@ -185,7 +195,11 @@ async def tail_log(config, clients = None, line_count = 1000):
     await message_all_clients(console_message)
 
 async def listen_for_particles(config, clients):
-    """Measure the number of particles in the allparticles_ stack and compare it to the last classification cycle to determine how many new particles are present. If the number is greater than the user-set thresholds, send out a classification job."""
+    """Measure the number of particles in the ``allparticles_$NEURALNET.star`` stack and compare it to the last classification cycle to determine how many new particles are present. If the number is greater than the user-set thresholds, send out a classification job.
+    Args:
+        config (dict): the global config object
+        clients (dict): dictionary of :py:class:`SocketHandler` instances that are open, to which the log will be sent.
+    """
     print("Listening for Particles?")
     if not config["job_status"] == "listening":
         print("not set to listening")
@@ -224,7 +238,18 @@ async def listen_for_particles(config, clients):
 
 
 async def execute_job_loop(config):
-    """The main job loop. Sends out processpoolexecutors where possible (and threadpoolexecutors elsewhere)."""
+    """The main job loop.
+
+    Combines new particles picked by warp into a single growing stack iteratively, then sends out a series of refine2d and merge2d jobs based on the settings entries of the config object. Uses multiprocessing to generate pools to split jobs into as many processes as are set by the process_count setting. Sends out processpoolexecutors where possible (and threadpoolexecutors elsewhere) to split off each individual cisTEM run from the main thread to keep the webapp responsive.
+
+    Webapp slowdowns still frequently happen at the beginning and end of cisTEM jobs - I believe these are actually related to disk and memory IO limitations, as cisTEM can hit those hard.
+
+    Results are written to the config classifications entry as they come in, and the config is written to file at the end of each cycle of classification.
+
+    Args:
+        config (dict): the global configuration file.
+
+    """
     log = logging.getLogger("live_2d")
     try:
         loop = tornado.ioloop.IOLoop.current()
@@ -389,7 +414,14 @@ async def execute_job_loop(config):
             config["kill_job"] = False
         raise
 
-async def message_all_clients(message):
+async def message_all_clients(message, clients = clients):
+    """
+    Send a message to all open clients, and close any that respond with closed state.
+
+    Args:
+        message (str or dict): a websocket-friendly message.
+        clients (set): a set of websockethandler instances that should represent every open session.
+    """
     for client in list(clients):
         try:
             client.write_message(message)
@@ -401,13 +433,13 @@ async def message_all_clients(message):
 
 def main():
     """Construct and serve the tornado app"""
-    parse_command_line()
+    options = define_options()
     uvloop.install()
     app=Application([(r"/", IndexHandler),
         (r"/static/(.*)", StaticFileHandler, {"path": os.path.join(starting_directory, "static")}),
         (r"/gallery/(.*)", StaticFileHandler, class_path_dict),
         (r"/websocket", SocketHandler),
-        ],**settings)
+        ],**options.group_dict('settings'))
     app.listen(options.port)
     print('Listening on http://localhost:%i' % options.port)
 

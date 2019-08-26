@@ -1,3 +1,15 @@
+"""
+Processing functions for Live 2D Classification
+===============================================
+This is a group of utility functions for the Live 2D Classification webserver related to processing EM data using output from warp and with cisTEM2 command line tools (called via subprocess execution).
+
+cisTEM2 command line inputs are subject to change, so if jobs are not running a good place to start checking is in the functions :generate_new_classes, :refine_2d_subjob, and :merge_2d_subjob
+
+These processing functions can be used independently of the web server, but the essential job loop logic is handled in :py:func:`live_2d.execute_job_loop`, not here.
+
+Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
+"""
+
 import asyncio
 import errno
 import glob
@@ -20,6 +32,15 @@ log = logging.getLogger("live_2d")
 
 
 def isheader(string):
+    """
+    Check if a string looks like a star header line.
+
+    Args:
+        string (str): line of a star file
+    Returns:
+        true if the line looks like a star file header lines
+        false if the line is expected to be a star file data line.
+    """
     # print(string)
     try:
         string = string.decode()
@@ -38,8 +59,13 @@ def isheader(string):
     return False
 
 def count_particles_per_class(star_filename):
-    """Generate a list with the number of counts for a give class in that index.
-    Adapted from https://stackoverflow.com/questions/46759464/fast-way-to-count-occurrences-of-all-values-in-a-pandas-dataframe"""
+    """Generate a list with the number of counts for a given class in that index.
+    Adapted from https://stackoverflow.com/questions/46759464/fast-way-to-count-occurrences-of-all-values-in-a-pandas-dataframe
+    Args:
+        star_filename (str): filename of a cistem classification starfile
+    Returns:
+        class_counter_list (list): list with count of each class in its respective index, and unclassified in index 0.
+    """
     with open(star_filename) as f:
         pos = 0
         cur_line = f.readline()
@@ -60,7 +86,13 @@ def count_particles_per_class(star_filename):
 
 
 async def particle_count_difference(warp_stack, previous_number):
-    """Quickly determine the difference in number of particles"""
+    """Quickly determine the difference in number of particles
+    Efficiently counts the number of non-header lines in a star file and subtracts the previous number counted. Used primarily as a tool for automated job triggering when sufficient new particles have been picked by warp.
+
+    Args:
+        warp_stack (str): filename of the current exported warp particles star file.
+        previous_number (int): number of particles in the latest classification run.
+    """
     with open(warp_stack, "r") as f:
         i=0
         j = 0
@@ -158,6 +190,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
 
                 mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
                 log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                print("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                 new_offset = new_offset+z
                 break
 
@@ -443,8 +476,7 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
 
 if __name__=="__main__":
     log.info("This is a function library and should not be called directly.")
-    data = count_particles_per_class('/gne/data/cryoem/DATA_COLLECTIONS/WARP/190718_Nav1.7_Krios_grid_001746_session_000775/classification/cycle_258.star')
-    print(data)
+    import_new_particles("combined_stack_test.mrcs", "/gne/data/cryoem/DATA_COLLECTIONS/WARP/190730_Proteasome_Krios_grid_001803_session_000794/", "allparticles_GenentechNet2Mask_20190730.star", "/gne/data/cryoem/DATA_COLLECTIONS/WARP/190730_Proteasome_Krios_grid_001803_session_000794/classification", new_net=True)
     # log.info("Testing particle import with streaming")
     # stack_label="streaming_combine"
     # warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"

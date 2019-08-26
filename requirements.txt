@@ -4,5 +4,7 @@ numpy==1.16.2 # BSD
 pandas==0.24.2 # BSD
 -e git+https://github.com/bbarad/pyem.git@58fc29e7b27a55d46ac78357b246f37819bfb3ee#egg=pyem # GPL
 scipy==1.2.1 # BSD
+Sphinx==2.2.0 # BSD
 terminado==0.8.1 # BSD
 tornado==6.0.2 # Apache 2.0
+uvloop==0.13.0 # Apache 2.0 (dual license)
