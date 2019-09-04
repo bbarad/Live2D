@@ -27,10 +27,11 @@ def initialize_logger(config):
     Returns:
         :py:class:`logging.Logger`: logger that prints to a logfile and to ``STDOUT``.
     """
-    log = logging.getLogger("live_2d")
-    for handler in log.handlers:
+    for handler in log.handlers[:]:
+        handler.close()
         log.removeHandler(handler)
-    # c_handler = logging.StreamHandler()
+    log.setLevel("INFO")
+    # c_handler = logging.StreamHandler(sys.stdout)
     # c_format=logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     # c_handler.setFormatter(c_format)
     # c_handler.setLevel(logging.DEBUG)
@@ -43,6 +44,7 @@ def initialize_logger(config):
 
     # log.addHandler(c_handler)
     log.addHandler(f_handler)
+    print(log)
 
     return log
 
@@ -140,7 +142,9 @@ def create_new_config(warp_folder, working_directory):
 
     try:
         mask_radius = root.find("Picking/*[@Name='Diameter']").get("Value")
-        mask_radius = mask_radius*.75 # particle diameter / 2 for radius, then multiply by 1.5 for mask space.
+        mask_radius = int(mask_radius)
+        mask_radius = int(mask_radius*.75) # particle diameter / 2 for radius, then multiply by 1.5 for mask space - then round to an integer
+
     except:
         log.error("Mask Radius could not be extracted.")
         return False
@@ -187,7 +191,7 @@ def create_new_config(warp_folder, working_directory):
     return config
 
 
-def change_warp_directory(warp_folder, config):
+def change_warp_directory(warp_folder, working_directory, config):
     """
     Change the config file to a new warp folder for a different data collection.
 
@@ -201,22 +205,22 @@ def change_warp_directory(warp_folder, config):
         ``false`` otherwise
     """
     if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
-        log.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder.")
+        log.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder. If that folder is misformed, you might have your warp_prefix and warp_suffix settings wrong in server_settings.conf.")
         return False
-    log.info("Found previous.settings file. Preparing to change folders.")
-    working_directory = os.path.join(warp_folder, "classification")
+    log.debug("Found previous.settings file. Preparing to change folders.")
+    # working_directory = os.path.join(warp_folder, "classification")
     if not os.path.isdir(working_directory):
         os.mkdir(working_directory)
     configfile = os.path.join(working_directory, "latest_run.json")
     new_config = {}
     if os.path.isfile(configfile):
-        log.info("Detected an existing config file in that warp folder, so we're loading that one.")
+        log.debug("Detected an existing config file in that warp folder, so we're loading that one.")
         new_config = load_config(configfile)
         new_config["job_status"] = "stopped"
         new_config["kill_job"] = False
     else:
-        log.info("There doesn't appear to be a config yet - generating one.")
-        working_directory = os.path.join(warp_folder, "classification")
+        log.debug("There doesn't appear to be a config yet - generating one.")
+        # working_directory = os.path.join(warp_folder, "classification")
         new_config = create_new_config(warp_folder, working_directory)
         if not new_config:
             return False

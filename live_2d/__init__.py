@@ -38,10 +38,14 @@ import uvloop
 from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger, update_config_from_warp
 import processing_functions
 
-async def define_options():
+def define_options():
     options = OptionParser()
     options.define('port', default=8181, type=int, help='port to listen on')
     options.define('microscope_name', default='Krios', type=str, help='Name of the microscope')
+    options.define('warp_prefix', help="Parent folder of all warp folders in the user facility's organization scheme.", group="folders")
+    options.define('warp_suffix', default=None, help="Child of the session-specific folder where warp output will be kept. Depends on workflow.", type=str, group="folders")
+    options.define('live2d_prefix', help="Parent where live2d output folders will be generated. If this is the same as the warp_prefix, a live_2d suffix is recommended.", group="folders")
+    options.define('live2d_suffix', default=None, help="Child of the session-specific folder where live2d output will be saved.", type=str, group="folders")
     options.define('listening_period_ms', default=120000, type=int, help='How long to wait between automatic job trigger checks, in ms')
     options.define('tail_log_period_ms', default=15000, type=int, help='How long to wait between sending the latest log lines to the clients, in ms')
     options.define('websocket_ping_interval', default=30, type=int, help='Period between ping pongs to keep connections alive, in seconds', group='settings')
@@ -59,6 +63,7 @@ config["counting"] = False
 clients = set()
 print("configloaded")
 class_path_dict = {"path": os.path.join(config["working_directory"], "class_images")}
+folder_options = {}
 
 class SocketHandler(WebSocketHandler):
     """Primary Web Server control class - every new client will make initialize of these classes.
@@ -141,13 +146,25 @@ class SocketHandler(WebSocketHandler):
             pass
         elif type == 'change_directory':
             print(data)
-            config_accepted = change_warp_directory(data, config)
-            log.info(f"Trying to change to folder {data}")
+            if data == None:
+                return
+            if folder_options["warp_suffix"]:
+                new_warp_folder = os.path.join(folder_options["warp_prefix"], data, folder_options["warp_suffix"])
+            else:
+                new_warp_folder = os.path.join(folder_options["warp_prefix"], data)
+            print(new_warp_folder)
+            if folder_options["live2d_suffix"]:
+                new_working_folder = os.path.join(folder_options["live2d_prefix"], data, folder_options["live2d_suffix"])
+            else:
+                new_working_folder = os.path.join(folder_options["live2d_prefix"], data)
+            print(new_working_folder)
+            config_accepted = change_warp_directory(new_warp_folder, new_working_folder, config)
+            log.debug(f"Trying to change to folder {data}")
             if not config_accepted:
-                await self.write_message({"type": "alert", "data": "The folder you selected doesn't have a previous.settings file from a warp job, so the change was aborted"})
+                await self.write_message({"type": "alert", "data": f"The folder {new_warp_folder} you selected doesn't have a previous.settings file from a warp job, so the change was aborted. Check your session name, and check whether your warp_prefix and warp_suffix are set up correctly."})
             else:
                 initialize_logger(config)
-                log.info(f"Changing to the new warp directory: {config['warp_folder']}")
+                log.info(f"Moving to warp directory: {config['warp_folder']}")
                 return_data = await initialize(config)
                 class_path_dict["path"] = os.path.join(config["working_directory"], "class_images")
                 await message_all_clients({"type":"alert", "data": "Changing warp directory"})
@@ -278,9 +295,7 @@ async def execute_job_loop(config):
             start_cycle_number = int(config["cycles"][-1]["number"])
         # Import particles
         # log.info("importing particles")
-        log.info(config["next_run_new_particles"])
         assert update_config_from_warp(config)
-        log.info(config["next_run_new_particles"])
         total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
 
         config["next_run_new_particles"] = False
@@ -435,6 +450,8 @@ async def message_all_clients(message, clients = clients):
 def main():
     """Construct and serve the tornado app"""
     options = define_options()
+    folder_options.update(options.group_dict("folders"))
+    print(folder_options)
     uvloop.install()
     app=Application([(r"/", IndexHandler),
         (r"/static/(.*)", StaticFileHandler, {"path": os.path.join(starting_directory, "static")}),

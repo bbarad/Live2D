@@ -41,7 +41,6 @@ def isheader(string):
         true if the line looks like a star file header lines
         false if the line is expected to be a star file data line.
     """
-    # print(string)
     try:
         string = string.decode()
     except AttributeError:
@@ -104,8 +103,6 @@ async def particle_count_difference(warp_stack, previous_number):
                 j += 1
             pass
         total_particle_count = i+1-j
-        print(total_particle_count)
-        print(previous_number)
         difference = total_particle_count - previous_number
 
     return difference
@@ -162,8 +159,8 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
 
     # MAKE PRELIMINARY STACK IF ITS NOT THERE
     if not previous_file:
-        print("No previous particle stack is being appended.")
-        print("Copying first mrcs file to generate seed for combined stack")
+        log.info("No previous particle stack is being appended.")
+        log.info("Copying first mrcs file to generate seed for combined stack")
         shutil.copy(stacks_filenames[0], combined_filename)
 
     # GET INFO ABOUT STACKS
@@ -172,8 +169,8 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         log.info("Previous Particles: {}".format(prev_par))
         new_particles_count = len(total_particles) - prev_par
         log.info("Total Particles to Import: {}".format(new_particles_count))
-        print(prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize+ mrcs.header.nbytes + mrcs.extended_header.nbytes)
-        print(mrcs.data.base.size())
+        # print(prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize+ mrcs.header.nbytes + mrcs.extended_header.nbytes)
+        # print(mrcs.data.base.size())
         offset = prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize + mrcs.header.nbytes + mrcs.extended_header.nbytes
         # log.info("Bytes Offset: {}".format(offset))
         data_dtype = mrcs.data.dtype
@@ -212,7 +209,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
 
                 mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
                 log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
-                print("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                # print("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                 new_offset = new_offset+z
                 break
 

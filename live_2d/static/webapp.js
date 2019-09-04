@@ -105,11 +105,13 @@ $(document).ready(function () {
     $(document).off('click',"#update-warp-directory");
     $(document).on('click', '#update-warp-directory', function(event) {
       bootbox.prompt({
-        title: "Enter the full path for your new Warp directory.",
+        title: "Enter the directory name for the Warp directory",
         closeButton: false,
         callback: function(result) {
           message = {"command": "change_directory", "data": result}
-          ws.send(JSON.stringify(message));
+          if (message != null) {
+            ws.send(JSON.stringify(message));
+          }
         }
       });
     });

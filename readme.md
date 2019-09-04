@@ -1,6 +1,9 @@
 # Live 2D Classification from Warp
 The Live2D tool is a lightweight python-based application to do semi-automated 2D
-classification of cryoEM particles simultaneously with data collection. It operates using a web interface for the frontend and uses Warp and cisTEM 2 on the backend.
+classification of cryoEM particles simultaneously with data collection. It operates using a simple web interface for the frontend and uses Warp and cisTEM 2 on the backend.
+
+Author: **Benjamin Barad** _<baradb@gene.com>_/_<benjamin.barad@gmail.com>_  
+Date Modified: _2019-09-04_
 
 ## Getting Started
 These instructions will get Live2D functioning on your local machine. It is recommended to install one copy per microscope onto separate workstations - it is a CPU-heavy multi-process application and is currently tested for linux only (but should in theory work for windows). Performance scales well up to 32 cores tested.
@@ -8,10 +11,10 @@ These instructions will get Live2D functioning on your local machine. It is reco
 This application cannot currently be installed on a cluster, but we are interested in extending it to do so.
 
 ### Prerequisites
-* [cisTEM](https://cistem.org/) >= 2.0.0 - cisTEM version must be using STAR files instead of PAR files.
-* [Warp](http://www.warpem.com/warp/) on a separate workstation (same computer behavior is untested, but warp is GPU-limited while live2D is CPU-limited, so they may place nice together).
+* [cisTEM](https://cistem.org/) >= 2.0 - cisTEM version must be using STAR files instead of PAR files.
+* [Warp](http://www.warpem.com/warp/) on a separate workstation (same computer behavior is untested, but warp is GPU-limited while Live2D is CPU-limited, so they may play nicely together).
   * The application requires that warp has been set up with `Pick Particles` and `Export Particle Coordinates` setting checked.
-* Python 3
+* [Python](https://www.python.org) >= 3.7
 
 ### Installation
 
@@ -26,10 +29,14 @@ cd ./live_2d
 cp latest_run.json.template latest_run.json
 ```
 
-You may want to edit `latest_run.json` and modify `process_number` - this is the number of processors that will be used for `refine2d` jobs, and should never be greater than the number of logical cores available to the workstation. By default, `process_number` is `32`, but increasing it will dramatically improve performance.
+### Configuration
+
+Most server-level configuration happens in `server_settings.conf` - this contains a set of variables that are loaded into the app on launch, and which can be changed at launch by command line flags. Minimally, users need to set `warp_prefix` and `live2d_prefix`, which are the parent paths for individual warp directories and live2d directories, respectively, in the user's workflow. The individual folder name for the warp folder will be copies as the folder name for the live2d folder, but in the different specified location. Additionally, `warp_suffix` and `live2d` suffixes can be used if it is desirable to use subfolders of the project-level unique-named folder, such as in cases where one folder structure houses raw data and processing output. It may also be convenient to change the port to `8080`, which will allow viewing of the site at `http://$HOSTNAME` without supplying a port.
+
+You may also want to edit `latest_run.json` and modify `process_number` - this is the number of processors that will be used for `refine2d` jobs, and should never be greater than the number of logical cores available to the workstation. By default, `process_number` is `32`, but increasing it will dramatically improve performance.
 
 ### Running the server
-The application runs via a [Tornado](https://www.tornadoweb.org/en/stable/) server in python. By default, the application runs on port `8181`. This behavior is user configurable. The server must be run by a user with read and write permissions to the folder that Warp is working in.
+The application runs via a [Tornado](https://www.tornadoweb.org/en/stable/) server in python. By default, the application runs on port `8181`. This behavior is user configurable - see the [Configuration](#Configuration) section for more details. The server must be run by a user with read and write permissions to the folder that Warp is working in. At launch time, configurations can be overridden by command line flags.
 
 ```bash
 python3 live_2d/__init__.py
@@ -39,7 +46,7 @@ or
 python3 live_2d/__init__.py --port=$LIVE2D_PORT
 ```
 
-__This application currently does not do any user authentication. Ensure that the port you choose is only accessible on the network. For additional security, make sure that the port is not exposed at all, and that the website can only be viewed from the local machine.__
+__This application currently does not do any user authentication. Ensure that the port you choose is only accessible on a secure network. For additional security, make sure that the port is not exposed at all, and that the website can only be viewed from the local machine.__
 
 This will launch the [Tornado](https://www.tornadoweb.org/en/stable/) server. After this, the website can be viewed in any modern browser (any with support for [websockets](https://caniuse.com/#feat=websockets)) at `http://$HOSTNAME:$LIVE2D_PORT` (or `http://$HOSTNAME` if you used port `8080`, or `http://localhost:$LIVE2D_PORT` if you are viewing on the same machine the server is running on). It is recommended to run the server in a detachable session (`screen` or `tmux` can help with this) in order to allow it run to for long periods of time - under ideal circumstances, the server should be able to do many live 2d classifications between re-initializations.
 
@@ -47,7 +54,7 @@ This will launch the [Tornado](https://www.tornadoweb.org/en/stable/) server. Af
 The website is organized with user controls in a panel on the left and results in a larger panel on the right. When the application is first opened, no results are available, and none will be visible. The server has global state - that is, individual users for the most part are looking at the same information at all times. If you open a new page, on your phone, the same computer, or a different computer, it should present the same information to all of those pages. Within a page, you can stage settings changes (which get sent to the server and all other open clients on job submission) and browse through previous results.
 
 ### Setting up your job
-The user's first action should be to change the directory by clicking the __Update Warp Directory__ button. This will open a modal with a dialog asking for a new warp folder. Enter the full path to the folder where warp is reading movies and writing out its results (you set that directory up in the Warp gui, but it may be a slightly different path depending on whether you use a `Samba` fileshare or other way to make files accessible to windows) and click __OK__. If Warp has run or is running in that folder, the server will read the `previous.settings` file output by warp in that folder and set up a new `classification` subfolder in the same directory that will house results from 2d classification.
+The user's first action should be to change the directory by clicking the __Update Warp Directory__ button. This will open a modal with a dialog asking for a new warp folder. Enter the directory name for the folder where warp is reading movies and writing out its results (you set that directory up in the Warp gui, but it may be a slightly different path depending on whether you use a `Samba` fileshare or other way to make files accessible to windows) and click __OK__. If Warp has run or is running in that folder, the server will read the `previous.settings` file output by warp in that folder and set up a new `classification` subfolder in the same directory that will house results from 2d classification.
 
 One a warp folder is successfully opened, most 2d classification-related settings are automatically pulled from warp, including guessing that the mask radius is likely to be the same as the particle size used to pick particles in Warp. Remaining settings are laid out in the __User Settings__ and __Expert Settings__ tabs, which can be collapsed or expanded by clicking on them.
 
@@ -66,7 +73,7 @@ Clicking either of the __Start__ buttons will send the settings chosen by user, 
 Very good results can be achieved by only interacting with these two settings. Start with just these settings, and then move to __Expert Settings__ to improve performance only when necessary.
 
 __Mask Radius__  
-The radius of the circular mask applied to the class averages before new rounds of classification. This value should be a little bit larger than your particle.
+The radius of the circular mask applied to the class averages before new rounds of classification. This value should be a little bit larger than your particle. Live2D makes a conservative (on the large size) initial guess of a good mask radius based on the particle size used in Warp.
 
 __Classification Type__  
 This setting switches between 3 macro programs for 2D classification.  
