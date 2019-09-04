@@ -132,3 +132,12 @@ When this happens, the easiest thing to do is generally to kill the server proce
 3. Check that the server account's path has `refine2d` and `merge2d` from cisTEM in it - generally, if `cisTEM` is in your path, they will be too.
 4. Try pulling the latest version of the github repository - occasionally, something changes in `refine2d` or `merge2d`, and the inputs sent by live2d need to be changed accordingly. Generally we will stay on top of this, and you can get the fix quickly.
 5. Open an issue on Roche Stash or Github. You may have found a novel bug.
+
+
+------------------------------
+This PDF was automatically generated from a readme file. To regenerate it after making edits, run:
+```bash
+module load apps/pandoc
+module load apps/texlive
+pandoc -V geometry:"margin=1in" --highlight-style=pygments -f gfm readme.md -o Live2D_User_Guide.pdf
+```
