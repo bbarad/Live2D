@@ -3,7 +3,7 @@ The Live2D tool is a lightweight python-based application to do semi-automated 2
 classification of cryoEM particles simultaneously with data collection. It operates using a simple web interface for the frontend and uses Warp and cisTEM 2 on the backend.
 
 Author: **Benjamin Barad** _<baradb@gene.com>_/_<benjamin.barad@gmail.com>_  
-Date Modified: _2019-09-04_
+Date Modified: _2019-09-17_
 
 ## Getting Started
 These instructions will get Live2D functioning on your local machine. It is recommended to install one copy per microscope onto separate workstations - it is a CPU-heavy multi-process application and is currently tested for linux only (but should in theory work for windows). Performance scales well up to 32 cores tested.
@@ -77,7 +77,7 @@ The radius of the circular mask applied to the class averages before new rounds 
 
 __Classification Type__  
 This setting switches between 3 macro programs for 2D classification.  
-- _Ab Initio_ - Perform a classification from random seed classes, starting at low resolution (40Å by default) and iteratively increasing the resolution cutoff with a small set of the particles, followed by several rounds of classification with 100% of particles at high resolution (8Å by default). When no previous classes have been calculated for the current set of warp-generated particles, this is the required option. Before classes are clearly resolvable as different views of the target, this is a good default behavior. When an _Ab Initio_ job finishes, the setting for the next automated run is changed to _Seeded Startup_.
+- _Ab Initio_ - Perform a classification from random seed classes, starting at low resolution (40Å by default) and iteratively increasing the resolution cutoff with a small set of the particles, followed by several rounds of classification with 100% of particles at high resolution (8Å by default). When no previous classes have been calculated for the current set of warp-generated particles, this is the required option. Before classes are clearly resolvable as different views of the target, this is a good default behavior. When an _Ab Initio_ job finishes successfully, the setting for the next automated run is changed to _Seeded Startup_.
 - _Seeded Startup_ - Perform a series of classifications that start at low resolution and iteratively improves, using the most recently generated classes as the starting point for classification, then perform several rounds of classification at the high resolution cutoff. Uses all particles from the beginning, unlike _Ab Initio_. This is the setting that should be used for the majority of the data collection, and is the default after the first job if automatic jobs are run from the beginning. Should not be used until enough particles have been collected to get clearly distinguishable class averages - generally around 50k particles is plenty, and sometimes this setting can be changed sooner than that if the classes look good. When hundreds of thousands to millions of particles have been collected, this setting can begin to take 10+ hours, and if the classes are already very good, new particles can instead be more efficiently incorporated with the _Refinement_ setting.
 - _Refinement_ - Perform a series of classifications with the most recent set of classes as a starting point, with all classifications at the high resolution cutoff and using all particles. High chance of overfitting to local minima - only switch to this when the existing classes are very good and enough particles have been collected that seeded startups are prohibitively slow.
 
@@ -101,16 +101,16 @@ __Additional Particle Count Before Update__
 Number of additional particles that need to be picked by warp before triggering a new job. Often late in runs more particles than this will be picked before a _Seeded Startup_ job completes, unless you change settings above. Early on, dropping this to 50k can give faster feedback on whether a good variety of views are getting picked by warp.
 
 __Number of Classes__    
-The number of classes to be generated during an _Ab Initio_ job. 50 is generally a good number, but this can be guided by previous cisTEM classifications of this or similar proteins.
+The number of classes to be generated during an _Ab Initio_ job. 50 is generally a good number, but this can be guided by previous cisTEM classifications of this or similar proteins. Computation time scales linearly with number of classes, so responsiveness may be impacted when this value is increased.
 
 __Initial Particles Per Class__  
-The number of particles per class to be used for the startup runs in _Ab Initio_ jobs, when a subset of particles are used. 300 is the cisTEM default.
+The number of particles per class to be used for the startup runs in _Ab Initio_ jobs, when a subset of particles are used. 300 is the cisTEM default. In sessions with significant preferred orientation problems, I have found increasing this number to 1000 can help with getting good results (at the cost of some computation time).
 
 __Automask__  
-This flag tells cisTEM to try to automatically mask class averages.
+This flag tells cisTEM to try to automatically mask class averages. This can result in overfitting, so leave this off before the classes are good.
 
 __Autocenter__  
-This flag tells cisTEM to automatically center class averages to their center of mass.
+This flag tells cisTEM to automatically center class averages to their center of mass. This is on by default, but can result in bad classes looking worse.
 
 
 ### Results Panel
@@ -121,6 +121,11 @@ This is the primary output subpanel for users to be focused on. When first loade
 
 __Job Output__  
 This subpanel has the last 1000 lines of the processing log available. It can be used to get information about processing, and generally should have errors logged (See [When Something Goes Terribly Wrong](#when-something-goes-terribly-wrong)).
+
+## Migrating to offline processing.
+Live 2D iteratively generates a combined particle stack, named `combined_stack.mrcs`, and a combined cisTEM-style star file named `combined_stack.star`, which can be used (in addition to the `allparticles` starfile output by Warp) to import particles for further classification and refinement using standard 3DEM software such as relion, cryosparc, and cisTEM. This is often more convenient than combining the particle stacks output by Warp manually.
+
+Additionally, more comprehensive Live 2D (+ Warp) results can be imported for off-line processing using `cisTEM 2`. `cisTEM 2` (`>=r1125`) includes a command line program called `warp_to_cistem` that will generate a new `cisTEM` project and import results from Warp, and if desired, results from Live2D. The program allows for import of as much or as little information as desired, from movies alone all the way through importing classification results. The results are imported to allow for complete cisTEM functionality, including resizing boxes, choosing particle subsets from 2d classes, adjusting particle picks, refining CTF, etc. __NB: Most files are not copied to the cisTEM project folder and instead are referenced in their current location, so if your pipeline involves moving warp and/or live2d files to an archival location, ensure that `warp_to_cistem` is run after that move to ensure the continued functionality of the `cisTEM` project.__
 
 ## When something goes terribly wrong
 Sometimes something goes wrong - the filesystem breaks down for a moment, a websocket sends something really uninterpretable by the server, or someone updates cisTEM and suddenly all the paths are different!
@@ -135,7 +140,7 @@ When this happens, the easiest thing to do is generally to kill the server proce
 
 
 ------------------------------
-This PDF was automatically generated from a readme file. To regenerate it after making edits, run:
+*This PDF was automatically generated from a readme file. To regenerate it after making edits, run:*
 ```bash
 module load apps/pandoc
 module load apps/texlive
