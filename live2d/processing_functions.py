@@ -193,7 +193,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
                 z = partial_mrcs.header.nz
                 if not z == wanted_z:
                     if try_number >= 12:
-                        raise IOERROR(errno.EIO,f"The data header didn't match the starfile: {z}, {wanted_z}")
+                        raise IOError(errno.EIO,f"The data header didn't match the starfile: {z}, {wanted_z}")
                     log.warn(f"File {filename} has a header that doesn't match the number of particles in the star file.")
                     try_number +=1
                     time.sleep(10)
@@ -201,7 +201,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
 
                 if not x*y*wanted_z == partial_mrcs.data.size:
                     if try_number >= 12:
-                        raise IOError(errno.ETIMEDOUT, "Took too long for Warp to correct the file. Killing job.")
+                        raise IOError(errno.ETIME, "Took too long for Warp to correct the file. Killing job.")
                     log.warn(f"File {filename} seems to not be done writing from Warp. Waiting 10 seconds and trying again.")
                     try_number +=1
                     time.sleep(10)

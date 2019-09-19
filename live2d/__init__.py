@@ -25,6 +25,7 @@ import json
 import logging
 import multiprocessing
 import os
+import shutil
 import sys
 import time
 
@@ -35,13 +36,13 @@ from tornado.web import Application, RequestHandler, StaticFileHandler
 from tornado.websocket import WebSocketHandler, WebSocketClosedError
 import uvloop
 
-from controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger, update_config_from_warp
-import processing_functions
+from .controls import initialize, load_config, get_new_gallery, dump_json, update_settings, generate_job_finished_message, change_warp_directory, generate_settings_message, initialize_logger, update_config_from_warp
+from . import processing_functions
 
 def define_options():
     options = OptionParser()
     options.define('port', default=8181, type=int, help='port to listen on')
-    options.define('microscope_name', default='Krios', type=str, help='Name of the microscope')
+    options.define('microscope_name', default="", type=str, help='Name of the microscope')
     options.define('warp_prefix', help="Parent folder of all warp folders in the user facility's organization scheme.", group="folders")
     options.define('warp_suffix', default=None, help="Child of the session-specific folder where warp output will be kept. Depends on workflow.", type=str, group="folders")
     options.define('live2d_prefix', help="Parent where live2d output folders will be generated. If this is the same as the warp_prefix, a live_2d suffix is recommended.", group="folders")
@@ -49,21 +50,16 @@ def define_options():
     options.define('listening_period_ms', default=120000, type=int, help='How long to wait between automatic job trigger checks, in ms')
     options.define('tail_log_period_ms', default=15000, type=int, help='How long to wait between sending the latest log lines to the clients, in ms')
     options.define('websocket_ping_interval', default=30, type=int, help='Period between ping pongs to keep connections alive, in seconds', group='settings')
+    options.define('process_pool_size', default=32, type=int, help='Total number of logical processors to use for multi-process refine2d jobs')
     # Settings related to actually operating the webpage
-    options.parse_config_file(os.path.join(sys.path[0], "server_settings.conf"), final=False)
+    options.parse_config_file(os.path.join(config_folder, "server_settings.conf"), final=False)
     options.parse_command_line()
     return options
 
-starting_directory = os.path.realpath(sys.path[0])
-config = load_config(os.path.join(starting_directory,'latest_run.json'))
-log = initialize_logger(config)
-config["job_status"] = "stopped"
-config["kill_job"] = False
-config["counting"] = False
+install_directory = os.path.realpath(os.path.dirname(__file__))
 clients = set()
-print("configloaded")
-class_path_dict = {"path": os.path.join(config["working_directory"], "class_images")}
-folder_options = {}
+class_path_dict = {}
+
 
 class SocketHandler(WebSocketHandler):
     """Primary Web Server control class - every new client will make initialize of these classes.
@@ -141,22 +137,22 @@ class SocketHandler(WebSocketHandler):
             return_data = await get_new_gallery(config, data)
             await self.write_message(return_data)
         elif type == 'initialize':
-            return_data = await initialize(config)
+            return_data = await initialize(config, options.microscope_name)
             await self.write_message(return_data)
             pass
         elif type == 'change_directory':
             print(data)
             if data == None:
                 return
-            if folder_options["warp_suffix"]:
-                new_warp_folder = os.path.join(folder_options["warp_prefix"], data, folder_options["warp_suffix"])
+            if options.warp_suffix:
+                new_warp_folder = os.path.join(options.warp_prefix, data, options.warp_suffix)
             else:
-                new_warp_folder = os.path.join(folder_options["warp_prefix"], data)
+                new_warp_folder = os.path.join(options.warp_suffix, data)
             print(new_warp_folder)
-            if folder_options["live2d_suffix"]:
-                new_working_folder = os.path.join(folder_options["live2d_prefix"], data, folder_options["live2d_suffix"])
+            if options.live2d_suffix:
+                new_working_folder = os.path.join(options.live2d_prefix, data, options.live2d_suffix)
             else:
-                new_working_folder = os.path.join(folder_options["live2d_prefix"], data)
+                new_working_folder = os.path.join(options.live2d_prefix, data)
             print(new_working_folder)
             config_accepted = change_warp_directory(new_warp_folder, new_working_folder, config)
             log.debug(f"Trying to change to folder {data}")
@@ -269,11 +265,12 @@ async def execute_job_loop(config):
 
     """
     log = logging.getLogger("live_2d")
+    print(options.port)
     try:
         loop = tornado.ioloop.IOLoop.current()
         executor = ProcessPoolExecutor(max_workers=1)
         executor2 = ThreadPoolExecutor(max_workers=1)
-        process_count = int(config["process_count"])
+        process_count = options.process_pool_size
         working_directory = config["working_directory"]
         os.chdir(working_directory)
         log.info("============================")
@@ -325,7 +322,7 @@ async def execute_job_loop(config):
 
             await loop.run_in_executor(executor, processing_functions.make_photos,"cycle_{}".format(start_cycle_number),working_directory)
             classified_count_per_class = [0]*(int(config["settings"]["class_number"])+1) # All classes are empty for the initialization!
-            new_cycle = {"name": "cycle_{}".format(start_cycle_number), "number": start_cycle_number, "settings": config["settings"], "high_res_limit": int(config["settings"]["high_res_initial"]), "block_type": "random_seed", "cycle_number_in_block": 1, "time": str(datetime.datetime.now()), "process_count": 1, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class}
+            new_cycle = {"name": "cycle_{}".format(start_cycle_number), "number": start_cycle_number, "settings": config["settings"], "high_res_limit": int(config["settings"]["high_res_initial"]), "block_type": "random_seed", "cycle_number_in_block": 1, "time": str(datetime.datetime.now()), "process_count": 1, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class, "fraction_used": class_fraction}
             config["cycles"].append(new_cycle)
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": start_cycle_number})
@@ -339,7 +336,7 @@ async def execute_job_loop(config):
             log.info("=====================================")
             log.info("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, config["settings"]["class_number"]))
             log.info("Classification will begin at {}Å and step up to {}Å resolution over {} iterative cycles of classification".format(config["settings"]["high_res_initial"], config["settings"]["high_res_final"], resolution_cycle_count))
-            log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process*class_fraction, config["process_count"]))
+            log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process*class_fraction, process_count))
             for cycle_number in range(resolution_cycle_count):
                 if config["kill_job"]:
                     log.info("Job Killed - Cycle Skipped")
@@ -363,7 +360,7 @@ async def execute_job_loop(config):
                 await loop.run_in_executor(executor,processing_functions.make_photos,"cycle_{}".format(filename_number+1),working_directory)
                 new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = config["working_directory"]))
                 classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
-                new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "startup", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class":classified_count_per_class}
+                new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "startup", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class":classified_count_per_class, "fraction_used": class_fraction}
                 config["cycles"].append(new_cycle)
                 dump_json(config)
                 return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
@@ -401,7 +398,7 @@ async def execute_job_loop(config):
             await loop.run_in_executor(executor, processing_functions.make_photos, "cycle_{}".format(filename_number+1),config["working_directory"])
             new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = working_directory))
             classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
-            new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "refinement", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class}
+            new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "refinement", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class, "fraction_used": class_fraction}
             config["cycles"].append(new_cycle)
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
@@ -415,13 +412,13 @@ async def execute_job_loop(config):
         else:
             config["job_status"] = "listening"
             config["kill_job"] = False
-        os.chdir(starting_directory)
+        os.chdir(install_directory)
         log.info("Done with job - sending result to all clients")
         return_message = await generate_job_finished_message(config)
         await message_all_clients(return_message)
     except Exception:
         log.exception("Job Loop Failed")
-        os.chdir(starting_directory)
+        os.chdir(install_directory)
         if config["kill_job"]:
             config["job_status"] = "stopped"
             config["kill_job"] = False
@@ -449,12 +446,35 @@ async def message_all_clients(message, clients = clients):
 
 def main():
     """Construct and serve the tornado app"""
+    global config_folder
+    config_folder = os.path.join(os.path.expanduser("~"), ".live2d")
+    if not os.path.exists(config_folder):
+        print(f"Didn't find a .live2d config folder. Making one now at {config_folder}.")
+        os.mkdir(config_folder)
+    server_config = os.path.join(config_folder, "server_settings.conf")
+    if not os.path.exists(server_config):
+        print(f"Didn't find a server_settings.conf file. Copying over the default one to the .live2d config folder now ({server_config}). Modify this script with desired paths and rerun.")
+        shutil.copyfile(os.path.join(install_directory, "server_settings.conf"), server_config)
+        return
+    latest_run = os.path.join(config_folder, "latest_run.json")
+    if not os.path.exists(latest_run):
+        print(f"Didn't find a latest_settings.json file in the config folder. Copying over the default one to the .live2d config folder now ({latest_run}).")
+        shutil.copyfile(os.path.join(install_directory, "latest_run.json.template"), latest_run)
+
+    global config
+    config = load_config(latest_run)
+    config["job_status"] = "stopped"
+    config["kill_job"] = False
+    config["counting"] = False
+    class_path_dict["path"] = os.path.join(config["working_directory"], "class_images")
+    global log
+    log = initialize_logger(config)
+
+    global options
     options = define_options()
-    folder_options.update(options.group_dict("folders"))
-    print(folder_options)
     uvloop.install()
     app=Application([(r"/", IndexHandler),
-        (r"/static/(.*)", StaticFileHandler, {"path": os.path.join(starting_directory, "static")}),
+        (r"/static/(.*)", StaticFileHandler, {"path": os.path.join(os.path.dirname(__file__), "static")}),
         (r"/gallery/(.*)", StaticFileHandler, class_path_dict),
         (r"/websocket", SocketHandler),
         ],**options.group_dict('settings'))
@@ -465,7 +485,6 @@ def main():
     tailed_callback.start()
 
     listening_callback = tornado.ioloop.PeriodicCallback(lambda: listen_for_particles(config, clients), options.listening_period_ms)
-
     listening_callback.start()
 
     tornado.ioloop.IOLoop.current().start()

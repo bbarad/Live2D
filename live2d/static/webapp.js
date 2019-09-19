@@ -37,6 +37,9 @@ $(document).ready(function () {
         case "init":
           get_settings_from_server(data_object.settings);
           update_class_gallery(data_object.gallery_data);
+          if (data_object.microscope_name != "") {
+            $("#microscope-id").html(" on "+data_object.microscope_name)
+          }
           break;
         case "console_update":
           get_console_from_server(data_object.data);

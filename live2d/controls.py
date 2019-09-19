@@ -15,7 +15,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 import tornado.template
-loader = tornado.template.Loader(".")
+loader = tornado.template.Loader(os.path.dirname(__file__))
 # import processing_functions
 log = logging.getLogger("live_2d")
 
@@ -174,7 +174,7 @@ def create_new_config(warp_folder, working_directory):
         "run_count_startup": "15",
         "run_count_refine": "5",
         "classification_type": "abinit",
-        "particle_count_initial": "15000",
+        "particle_count_initial": "30000",
         "particle_count_update": "50000",
         "autocenter": True,
         "automask": False,
@@ -228,7 +228,7 @@ def change_warp_directory(warp_folder, working_directory, config):
     return True
 
 
-async def initialize(config):
+async def initialize(config, microscope_name = ""):
     """
     Create a response message to send to clients that will include the most recent gallery and the current settings.
 
@@ -241,6 +241,7 @@ async def initialize(config):
     message["type"] = "init"
     message["gallery_data"] = await generate_gallery_html(config)
     message["settings"] = await generate_settings_message(config)
+    message["microscope_name"] = microscope_name
     return message
 
 async def generate_job_finished_message(config):
@@ -280,7 +281,8 @@ def dump_json(config):
     Args:
         config (dict): Global settings and results object to save.
     """
-    with open(os.path.join(os.path.realpath(sys.path[0]),"latest_run.json"), "w") as jsonfile:
+    config_folder = os.path.join(os.path.expanduser("~"), ".live2d")
+    with open(os.path.join(config_folder,"latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
     with open(os.path.join(config["working_directory"], "latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
