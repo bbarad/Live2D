@@ -147,7 +147,7 @@ class SocketHandler(WebSocketHandler):
             if options.warp_suffix:
                 new_warp_folder = os.path.join(options.warp_prefix, data, options.warp_suffix)
             else:
-                new_warp_folder = os.path.join(options.warp_suffix, data)
+                new_warp_folder = os.path.join(options.warp_prefix, data)
             print(new_warp_folder)
             if options.live2d_suffix:
                 new_working_folder = os.path.join(options.live2d_prefix, data, options.live2d_suffix)
@@ -349,6 +349,7 @@ async def execute_job_loop(config):
                 log.info("===================================================")
                 log.info("High Res Limit: {0:.2}".format(high_res_limit))
                 log.info("Fraction of Particles: {0:.2}".format(class_fraction))
+                log.info(f"Number of Particles: {particle_count}")
                 log.info(f"Dispatching job at {datetime.datetime.now()}")
                 pool = multiprocessing.Pool(processes=process_count)
                 refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
@@ -366,6 +367,20 @@ async def execute_job_loop(config):
                 return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
                 log.info("Sending new gallery to clients")
                 await message_all_clients(return_data)
+
+                ## IMPORT NEW PARTICLES
+                log.info("Getting new particles between jobs")
+                assert update_config_from_warp(config)
+                if config["next_run_new_particles"] == True:
+                    log.info("Complete particle reimport is needed and will be deferred until the next full job trigger")
+                    continue
+                total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
+                dump_json(config)
+                new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = working_directory, previous_classes_bool = True, merge_star=True, recent_class=config["cycles"][-1]["name"], start_cycle_number=start_cycle_number))
+                particle_count, particles_per_process, class_fraction = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=new_star_file, class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
+                if config["settings"]["classification_type"] == "seeded":
+                    class_fraction = 1.0
+
             start_cycle_number = start_cycle_number + resolution_cycle_count
 
         # Refinement Cycles
@@ -388,6 +403,7 @@ async def execute_job_loop(config):
             filename_number = cycle_number + start_cycle_number
             log.info("High Res Limit: {0}".format(high_res_limit))
             log.info("Fraction of Particles: {0:.2}".format(class_fraction))
+            log.info(f"Number of Particles: {particle_count}")
             log.info(f"Dispatching job at {datetime.datetime.now()}")
             pool = multiprocessing.Pool(processes=int(config["process_count"]))
             refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
@@ -404,6 +420,19 @@ async def execute_job_loop(config):
             return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
             log.info("Sending new gallery to clients")
             await message_all_clients(return_data)
+
+            ## IMPORT NEW PARTICLES
+            log.info("Getting new particles between jobs")
+            assert update_config_from_warp(config)
+            if config["next_run_new_particles"] == True:
+                log.info("Complete particle reimport is needed and will be deferred until the next full job trigger")
+                continue
+            total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
+            dump_json(config)
+            new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = working_directory, previous_classes_bool = True, merge_star=True, recent_class=config["cycles"][-1]["name"], start_cycle_number=start_cycle_number))
+            particle_count, particles_per_process, _ = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=new_star_file, class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
+            class_fraction = 1.0
+
         if config["settings"]["classification_type"] == "abinit":
             config["settings"]["classification_type"] = "seeded"
         if config["kill_job"]:
