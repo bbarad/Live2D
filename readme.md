@@ -127,14 +127,15 @@ Sometimes something goes wrong - the filesystem breaks down for a moment, a webs
 When this happens, the easiest thing to do is generally to kill the server process with a `SIGINT` message (`ctrl+C` on linux/mac) and restart it. Generally, you will reinitialize with the same state as you were in before the crash (no need to repeat the setup), and can continue without problem. Occasionally, the program will not relaunch (or will soon crash again) for one of a few reasons.
 
 1. Check that the warp folder is accessible and that the server account has write access - if either changes, the program will not work and will be very unhappy.
-2. Check that the `latest_run.json` file in the folder the server runs from (usually the git repository folder) is correctly formed - occasionally an error can occur during writing and it will end up malformed. If this happens, copy the `latest_run.json` file from the `$WARP_FOLDER/classification/` directory into the server's base directory. You might lose the most recent class (if it was the one that the write failed on) but that should be the maximum amount of data you lose.
+2. Check that the `$HOME/.live2d/latest_run.json` file in the folder the server runs from (usually the git repository folder) is correctly formed - occasionally an error can occur during writing and it will end up malformed. If this happens, copy the `latest_run.json` file from the `$LIVE2D_FOLDER` to `$HOME/.live2d/latest_run.json`. You might lose the most recent class (if it was the one that the write failed on) but that should be the maximum amount of data you lose.
 3. Check that the server account's path has `refine2d` and `merge2d` from cisTEM in it - generally, if `cisTEM` is in your path, they will be too.
 4. Try pulling the latest version of the github repository - occasionally, something changes in `refine2d` or `merge2d`, and the inputs sent by live2d need to be changed accordingly. Generally we will stay on top of this, and you can get the fix quickly.
+5. It is possible for the particle stack to become irreversibly corrupted. Fix this by setting `next_run_new_particles` to `true` in `$HOME/.live2d/latest_run.json` and restarting the server.
 5. Open an issue on Roche Stash or Github. You may have found a novel bug.
 
 
 ------------------------------
-*This PDF was automatically generated from a readme file. To regenerate it after making edits, run:*
+*This PDF was automatically generated from a readme markdown file. To regenerate it after making edits, run:*
 ```bash
 module load apps/pandoc
 module load apps/texlive
