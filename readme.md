@@ -3,7 +3,7 @@ The Live2D tool is a lightweight python-based application to do semi-automated 2
 classification of cryoEM particles simultaneously with data collection. It operates using a simple web interface for the frontend and uses Warp and cisTEM 2 on the backend.
 
 Author: **Benjamin Barad** _<baradb@gene.com>_/_<benjamin.barad@gmail.com>_  
-Date Modified: _2019-09-17_
+Date Modified: _2019-09-19_
 
 ## Getting Started
 These instructions will get Live2D functioning on your local machine. It is recommended to install one copy per microscope onto separate workstations - it is a CPU-heavy multi-process application and is currently tested for linux only (but should in theory work for windows). Performance scales well up to 32 cores tested.
@@ -18,32 +18,26 @@ This application cannot currently be installed on a cluster, but we are interest
 
 ### Installation
 
-Clone this repository.
-
 Edit your `.bashrc` or `.zshrc` to ensure that the default shell has `refine2d` and `merge2d` in the `$PATH`.
 
 ```bash
-cd $REPOSITORY
-pip install requirements.txt
-cd ./live_2d
-cp latest_run.json.template latest_run.json
+git clone https://github.com/bbarad/Live2D
+pip install ./Live2D
 ```
 
 ### Configuration
 
-Most server-level configuration happens in `server_settings.conf` - this contains a set of variables that are loaded into the app on launch, and which can be changed at launch by command line flags. Minimally, users need to set `warp_prefix` and `live2d_prefix`, which are the parent paths for individual warp directories and live2d directories, respectively, in the user's workflow. The individual folder name for the warp folder will be copies as the folder name for the live2d folder, but in the different specified location. Additionally, `warp_suffix` and `live2d` suffixes can be used if it is desirable to use subfolders of the project-level unique-named folder, such as in cases where one folder structure houses raw data and processing output. It may also be convenient to change the port to `8080`, which will allow viewing of the site at `http://$HOSTNAME` without supplying a port.
-
-You may also want to edit `latest_run.json` and modify `process_number` - this is the number of processors that will be used for `refine2d` jobs, and should never be greater than the number of logical cores available to the workstation. By default, `process_number` is `32`, but increasing it will dramatically improve performance.
+Most server-level configuration happens in `$HOME/.live2d/server_settings.conf` - this file is generated the first time `live2d` is run, and contains a set of variables that are loaded into the app on launch, and which can be changed at launch by command line flags. Minimally, users need to set `warp_prefix` and `live2d_prefix`, which are the parent paths for individual warp directories and live2d directories, respectively, in the user's workflow. The individual folder name for the warp folder will be copies as the folder name for the live2d folder, but in the different specified location. Additionally, `warp_suffix` and `live2d_suffix` can be used if it is desirable to use subfolders of the project-level unique-named folder, such as in cases where one folder structure houses raw data and processing output. It may also be convenient to change the port to `8080`, which will allow viewing of the site at `http://$HOSTNAME` without supplying a port. You may also want to modify `process_pool_size` - this is the number of processors that will be used for `refine2d` jobs, and should never be greater than the number of logical cores available to the workstation. By default, `process_pool_size` is `32`, but increasing it will dramatically improve performance if there are more than 32 logical cores available in the workstation.
 
 ### Running the server
 The application runs via a [Tornado](https://www.tornadoweb.org/en/stable/) server in python. By default, the application runs on port `8181`. This behavior is user configurable - see the [Configuration](#Configuration) section for more details. The server must be run by a user with read and write permissions to the folder that Warp is working in. At launch time, configurations can be overridden by command line flags.
 
 ```bash
-python3 live_2d/__init__.py
+live2d
 ```
 or
 ```bash
-python3 live_2d/__init__.py --port=$LIVE2D_PORT
+live2d --port=$LIVE2D_PORT
 ```
 
 __This application currently does not do any user authentication. Ensure that the port you choose is only accessible on a secure network. For additional security, make sure that the port is not exposed at all, and that the website can only be viewed from the local machine.__
