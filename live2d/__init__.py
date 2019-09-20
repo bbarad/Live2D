@@ -57,6 +57,7 @@ def define_options():
     return options
 
 install_directory = os.path.realpath(os.path.dirname(__file__))
+stack_label = "combined_stack"
 clients = set()
 class_path_dict = {}
 
@@ -124,8 +125,14 @@ class SocketHandler(WebSocketHandler):
                 config["job_status"] = "killed"
                 await message_all_clients({"type": "kill_received"})
             elif config["job_status"] == "listening" and not config["counting"]:
+                config["job_status"] = "killed"
+                await message_all_clients({"type": "kill_received"})
+                log.info("Importing newest particles before halting")
+                os.chdir(config["working_directory"])
+                assert update_config_from_warp(config)
+                total_particles =  await tornado.ioloop.IOLoop.current().run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
+                os.chdir(install_directory)
                 config["job_status"] = "stopped"
-                await self.write_message({"type": "alert", "data": "Stopped waiting for new particles"})
                 message = {}
                 message["type"] = "settings_update"
                 message["settings"] = await generate_settings_message(config)
@@ -268,8 +275,6 @@ async def execute_job_loop(config):
     print(options.port)
     try:
         loop = tornado.ioloop.IOLoop.current()
-        executor = ProcessPoolExecutor(max_workers=1)
-        executor2 = ThreadPoolExecutor(max_workers=1)
         process_count = options.process_pool_size
         working_directory = config["working_directory"]
         os.chdir(working_directory)
@@ -278,7 +283,6 @@ async def execute_job_loop(config):
         log.info("============================")
         # Check old classes:
         # log.info("checking classes")
-        stack_label = "combined_stack"
         if not config["cycles"]:
             # log.info("Since no previous classes were found, this is an ab initio run")
             previous_classes_bool = False
@@ -509,6 +513,11 @@ def main():
         ],**options.group_dict('settings'))
     app.listen(options.port)
     print('Listening on http://localhost:%i' % options.port)
+
+    global executor
+    global executor2
+    executor = ProcessPoolExecutor(max_workers=1)
+    executor2 = ThreadPoolExecutor(max_workers=1)
 
     tailed_callback = tornado.ioloop.PeriodicCallback(lambda: tail_log(config, clients), options.tail_log_period_ms)
     tailed_callback.start()
