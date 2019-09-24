@@ -1,3 +1,21 @@
+#! /usr/bin/env python
+
+#
+# Copyright 2019 Genentech Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 """Live 2D classification
 ===================================
 Startup: ``python __init__.py --port=8181``
@@ -57,6 +75,7 @@ def define_options():
     return options
 
 install_directory = os.path.realpath(os.path.dirname(__file__))
+starting_directory = os.path.realpath(sys.path[0])
 stack_label = "combined_stack"
 clients = set()
 class_path_dict = {}
@@ -106,7 +125,7 @@ class SocketHandler(WebSocketHandler):
                 loop.add_callback(execute_job_loop, config)
 
             else:
-                log.info("Malformed job status - didn't start job")
+                live2dlog.info("Malformed job status - didn't start job")
             pass
         elif type == "listen":
             if config["job_status"] == "stopped":
@@ -127,11 +146,9 @@ class SocketHandler(WebSocketHandler):
             elif config["job_status"] == "listening" and not config["counting"]:
                 config["job_status"] = "killed"
                 await message_all_clients({"type": "kill_received"})
-                log.info("Importing newest particles before halting")
-                os.chdir(config["working_directory"])
+                live2dlog.info("Importing newest particles before halting")
                 assert update_config_from_warp(config)
                 total_particles =  await tornado.ioloop.IOLoop.current().run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
-                os.chdir(install_directory)
                 config["job_status"] = "stopped"
                 message = {}
                 message["type"] = "settings_update"
@@ -162,12 +179,12 @@ class SocketHandler(WebSocketHandler):
                 new_working_folder = os.path.join(options.live2d_prefix, data)
             print(new_working_folder)
             config_accepted = change_warp_directory(new_warp_folder, new_working_folder, config)
-            log.debug(f"Trying to change to folder {data}")
+            live2dlog.debug(f"Trying to change to folder {data}")
             if not config_accepted:
                 await self.write_message({"type": "alert", "data": f"The folder {new_warp_folder} you selected doesn't have a previous.settings file from a warp job, so the change was aborted. Check your session name, and check whether your warp_prefix and warp_suffix are set up correctly."})
             else:
                 initialize_logger(config)
-                log.info(f"Moving to warp directory: {config['warp_folder']}")
+                live2dlog.info(f"Moving to warp directory: {config['warp_folder']}")
                 return_data = await initialize(config)
                 class_path_dict["path"] = os.path.join(config["working_directory"], "class_images")
                 await message_all_clients({"type":"alert", "data": "Changing warp directory"})
@@ -239,10 +256,10 @@ async def listen_for_particles(config, clients):
     try:
         warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
         new_particle_count = await processing_functions.particle_count_difference(warp_stack_filename, current_particle_count)
-        log.info(f"New Particles Detected: {new_particle_count}")
+        live2dlog.info(f"New Particles Detected: {new_particle_count}")
         print(new_particle_count)
         if new_particle_count >= particle_count_to_fire:
-            log.info(f"Job triggering automatically as {new_particle_count} particles have been added by Warp since last import.")
+            live2dlog.info(f"Job triggering automatically as {new_particle_count} particles have been added by Warp since last import.")
             config["job_status"] = "running"
             message = {}
             message["type"] = "settings_update"
@@ -252,7 +269,7 @@ async def listen_for_particles(config, clients):
             loop.add_callback(execute_job_loop, config)
         config["counting"] = False
     except Exception:
-        log.error("Automated Particle Counting and Job Submission Failed")
+        live2dlog.error("Automated Particle Counting and Job Submission Failed")
         config["counting"] = False
         raise
 
@@ -271,20 +288,18 @@ async def execute_job_loop(config):
         config (dict): the global configuration file.
 
     """
-    log = logging.getLogger("live_2d")
-    print(options.port)
+    # log = logging.getLogger("live_2d")
+    # print(options.port)
     try:
         loop = tornado.ioloop.IOLoop.current()
         process_count = options.process_pool_size
-        working_directory = config["working_directory"]
-        os.chdir(working_directory)
-        log.info("============================")
-        log.info("Beginning Classification Job")
-        log.info("============================")
+        live2dlog.info("============================")
+        live2dlog.info("Beginning Classification Job")
+        live2dlog.info("============================")
         # Check old classes:
-        # log.info("checking classes")
+        # live2dlog.info("checking classes")
         if not config["cycles"]:
-            # log.info("Since no previous classes were found, this is an ab initio run")
+            # live2dlog.info("Since no previous classes were found, this is an ab initio run")
             previous_classes_bool = False
             recent_class = "cycle_0"
             start_cycle_number = 0
@@ -295,7 +310,7 @@ async def execute_job_loop(config):
             recent_class = config["cycles"][-1]["name"]
             start_cycle_number = int(config["cycles"][-1]["number"])
         # Import particles
-        # log.info("importing particles")
+        # live2dlog.info("importing particles")
         assert update_config_from_warp(config)
         total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
 
@@ -303,7 +318,7 @@ async def execute_job_loop(config):
         dump_json(config)
         # Generate new classes
         if config["force_abinit"]:
-            log.info("Classification type choice is disregarded because ab initio classification is required for these user settings.")
+            live2dlog.info("Classification type choice is disregarded because ab initio classification is required for these user settings.")
             config["settings"]["classification_type"] = "abinit"
             config["force_abinit"] = False
         if config["settings"]["classification_type"] == "abinit":
@@ -312,76 +327,76 @@ async def execute_job_loop(config):
             merge_star = True
         if previous_classes_bool and not merge_star:
             start_cycle_number += 1
-        log.info(f"The classification type for this run will be {config['settings']['classification_type']}.")
-        new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = working_directory, previous_classes_bool = previous_classes_bool, merge_star=merge_star, recent_class=recent_class, start_cycle_number=start_cycle_number))
-        particle_count, particles_per_process, class_fraction = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=new_star_file, class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
+        live2dlog.info(f"The classification type for this run will be {config['settings']['classification_type']}.")
+        new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = config["working_directory"], previous_classes_bool = previous_classes_bool, merge_star=merge_star, recent_class=recent_class, start_cycle_number=start_cycle_number))
+        particle_count, particles_per_process, class_fraction = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=os.path.join(config["working_directory"],new_star_file), class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
         if config["settings"]["classification_type"] == "seeded":
             class_fraction = 1.0
         # Generate new classes!
         if config["settings"]["classification_type"] == "abinit" and not config["kill_job"]:
-            log.info("============================")
-            log.info("Preparing Initial 2D Classes")
-            log.info("============================")
-            await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"]))
+            live2dlog.info("============================")
+            live2dlog.info("Preparing Initial 2D Classes")
+            live2dlog.info("============================")
+            await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"]))
 
-            await loop.run_in_executor(executor, processing_functions.make_photos,"cycle_{}".format(start_cycle_number),working_directory)
+            await loop.run_in_executor(executor, processing_functions.make_photos,"cycle_{}".format(start_cycle_number),config["working_directory"])
             classified_count_per_class = [0]*(int(config["settings"]["class_number"])+1) # All classes are empty for the initialization!
             new_cycle = {"name": "cycle_{}".format(start_cycle_number), "number": start_cycle_number, "settings": config["settings"], "high_res_limit": int(config["settings"]["high_res_initial"]), "block_type": "random_seed", "cycle_number_in_block": 1, "time": str(datetime.datetime.now()), "process_count": 1, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class, "fraction_used": class_fraction}
             config["cycles"].append(new_cycle)
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": start_cycle_number})
-            log.info("Sending new gallery to clients")
+            live2dlog.info("Sending new gallery to clients")
             await message_all_clients(return_data)
         # Startup Cycles
         if not config["settings"]["classification_type"] == "refine":
             resolution_cycle_count = int(config["settings"]["run_count_startup"])
-            log.info("=====================================")
-            log.info("Beginning Iterative 2D Classification")
-            log.info("=====================================")
-            log.info("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, config["settings"]["class_number"]))
-            log.info("Classification will begin at {}Å and step up to {}Å resolution over {} iterative cycles of classification".format(config["settings"]["high_res_initial"], config["settings"]["high_res_final"], resolution_cycle_count))
-            log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process*class_fraction, process_count))
+            live2dlog.info("=====================================")
+            live2dlog.info("Beginning Iterative 2D Classification")
+            live2dlog.info("=====================================")
+            live2dlog.info("Of the total {} particles, {:.0f}% will be classified into {} classes".format(particle_count, class_fraction*100, config["settings"]["class_number"]))
+            live2dlog.info("Classification will begin at {}Å and step up to {}Å resolution over {} iterative cycles of classification".format(config["settings"]["high_res_initial"], config["settings"]["high_res_final"], resolution_cycle_count))
+            live2dlog.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process*class_fraction, process_count))
             for cycle_number in range(resolution_cycle_count):
                 if config["kill_job"]:
-                    log.info("Job Killed - Cycle Skipped")
+                    live2dlog.info("Job Killed - Cycle Skipped")
                     continue
                 low_res_limit = 300
                 high_res_limit = int(config["settings"]["high_res_initial"])-(((int(config["settings"]["high_res_initial"])-int(config["settings"]["high_res_final"]))/(resolution_cycle_count-1))*cycle_number)
                 filename_number = cycle_number + start_cycle_number
-                log.info("===================================================")
-                log.info("Sending a new classification job out for processing")
-                log.info("===================================================")
-                log.info("High Res Limit: {0:.2}".format(high_res_limit))
-                log.info("Fraction of Particles: {0:.2}".format(class_fraction))
-                log.info(f"Number of Particles: {particle_count}")
-                log.info(f"Dispatching job at {datetime.datetime.now()}")
+                live2dlog.info("===================================================")
+                live2dlog.info("Sending a new classification job out for processing")
+                live2dlog.info("===================================================")
+                live2dlog.info("High Res Limit: {0:.2}".format(high_res_limit))
+                live2dlog.info("Fraction of Particles: {0:.2}".format(class_fraction))
+                live2dlog.info(f"Number of Particles: {particle_count}")
+                live2dlog.info(f"Dispatching job at {datetime.datetime.now()}")
                 pool = multiprocessing.Pool(processes=process_count)
-                refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
+                refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
                 results_list = await loop.run_in_executor(executor2, pool.map, refine_job, range(process_count))
 
                 pool.close()
-                log.info(results_list[0].decode('utf-8'))
-                await loop.run_in_executor(executor,partial(processing_functions.merge_2d_subjob,filename_number, process_count=process_count))
-                await loop.run_in_executor(executor,processing_functions.make_photos,"cycle_{}".format(filename_number+1),working_directory)
+                live2dlog.info(results_list[0].decode('utf-8'))
+                await loop.run_in_executor(executor,partial(processing_functions.merge_2d_subjob,filename_number, config["working_directory"], process_count=process_count))
+                await loop.run_in_executor(executor,processing_functions.make_photos,"cycle_{}".format(filename_number+1),config["working_directory"])
                 new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = config["working_directory"]))
                 classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
                 new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "startup", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class":classified_count_per_class, "fraction_used": class_fraction}
                 config["cycles"].append(new_cycle)
                 dump_json(config)
                 return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
-                log.info("Sending new gallery to clients")
+                live2dlog.info("Sending new gallery to clients")
                 await message_all_clients(return_data)
 
                 ## IMPORT NEW PARTICLES
-                log.info("Getting new particles between jobs")
+                live2dlog.info("Getting new particles between jobs")
                 assert update_config_from_warp(config)
                 if config["next_run_new_particles"] == True:
-                    log.info("Complete particle reimport is needed and will be deferred until the next full job trigger")
+                    live2dlog.info("Complete particle reimport is needed and will be deferred until the next full job trigger")
                     continue
                 total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
                 dump_json(config)
-                new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = working_directory, previous_classes_bool = True, merge_star=True, recent_class=config["cycles"][-1]["name"], start_cycle_number=start_cycle_number))
-                particle_count, particles_per_process, class_fraction = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=new_star_file, class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
+                new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = config["working_directory"], previous_classes_bool = True, merge_star=True, recent_class=config["cycles"][-1]["name"], start_cycle_number=start_cycle_number))
+                particle_count, particles_per_process, class_fraction = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=os.path.join(config["working_directory"],new_star_file), class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
                 if config["settings"]["classification_type"] == "seeded":
                     class_fraction = 1.0
 
@@ -390,51 +405,51 @@ async def execute_job_loop(config):
         # Refinement Cycles
         refinement_cycle_count = int(config["settings"]["run_count_refine"])
         class_fraction = 1.0
-        log.info("==========================================================")
-        log.info("2D class refinement at final resolution with all particles")
-        log.info("==========================================================")
-        log.info("All {} particles will be classified into {} classes at resolution {}Å".format(particle_count, config["settings"]["class_number"], config["settings"]["high_res_final"]))
-        log.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process, config["process_count"]))
+        live2dlog.info("==========================================================")
+        live2dlog.info("2D class refinement at final resolution with all particles")
+        live2dlog.info("==========================================================")
+        live2dlog.info("All {} particles will be classified into {} classes at resolution {}Å".format(particle_count, config["settings"]["class_number"], config["settings"]["high_res_final"]))
+        live2dlog.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process, config["process_count"]))
         for cycle_number in range(refinement_cycle_count):
             if config["kill_job"]:
-                log.info("Job Killed - Cycle Skipped")
+                live2dlog.info("Job Killed - Cycle Skipped")
                 continue
-            log.info("===================================================")
-            log.info("Sending a new classification job out for processing")
-            log.info("===================================================")
+            live2dlog.info("===================================================")
+            live2dlog.info("Sending a new classification job out for processing")
+            live2dlog.info("===================================================")
             low_res_limit = 300
             high_res_limit = int(config["settings"]["high_res_final"])
             filename_number = cycle_number + start_cycle_number
-            log.info("High Res Limit: {0}".format(high_res_limit))
-            log.info("Fraction of Particles: {0:.2}".format(class_fraction))
-            log.info(f"Number of Particles: {particle_count}")
-            log.info(f"Dispatching job at {datetime.datetime.now()}")
+            live2dlog.info("High Res Limit: {0}".format(high_res_limit))
+            live2dlog.info("Fraction of Particles: {0:.2}".format(class_fraction))
+            live2dlog.info(f"Number of Particles: {particle_count}")
+            live2dlog.info(f"Dispatching job at {datetime.datetime.now()}")
             pool = multiprocessing.Pool(processes=int(config["process_count"]))
-            refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = working_directory,automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
+            refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
             results_list = await loop.run_in_executor(executor2,pool.map,refine_job, range(process_count))
             pool.close()
-            log.info(results_list[30].decode('utf-8'))
-            await loop.run_in_executor(executor, partial(processing_functions.merge_2d_subjob, filename_number, process_count=int(config["process_count"])))
+            live2dlog.info(results_list[30].decode('utf-8'))
+            await loop.run_in_executor(executor, partial(processing_functions.merge_2d_subjob, filename_number,config["working_directory"], process_count=int(config["process_count"])))
             await loop.run_in_executor(executor, processing_functions.make_photos, "cycle_{}".format(filename_number+1),config["working_directory"])
-            new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = working_directory))
+            new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files,filename_number, process_count=process_count, working_directory = config["working_directory"]))
             classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)
             new_cycle = {"name": "cycle_{}".format(filename_number+1), "number": filename_number+1, "settings": config["settings"], "high_res_limit": high_res_limit, "block_type": "refinement", "cycle_number_in_block": cycle_number+1, "time": str(datetime.datetime.now()), "process_count": process_count, "particle_count": total_particles, "particle_count_per_class": classified_count_per_class, "fraction_used": class_fraction}
             config["cycles"].append(new_cycle)
             dump_json(config)
             return_data = await get_new_gallery(config, {"gallery_number": filename_number+1})
-            log.info("Sending new gallery to clients")
+            live2dlog.info("Sending new gallery to clients")
             await message_all_clients(return_data)
 
             ## IMPORT NEW PARTICLES
-            log.info("Getting new particles between jobs")
+            live2dlog.info("Getting new particles between jobs")
             assert update_config_from_warp(config)
             if config["next_run_new_particles"] == True:
-                log.info("Complete particle reimport is needed and will be deferred until the next full job trigger")
+                live2dlog.info("Complete particle reimport is needed and will be deferred until the next full job trigger")
                 continue
             total_particles =  await loop.run_in_executor(executor,partial(processing_functions.import_new_particles,stack_label=stack_label, warp_folder = config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory = config["working_directory"], new_net = config["next_run_new_particles"])) #await
             dump_json(config)
-            new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = working_directory, previous_classes_bool = True, merge_star=True, recent_class=config["cycles"][-1]["name"], start_cycle_number=start_cycle_number))
-            particle_count, particles_per_process, _ = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=new_star_file, class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
+            new_star_file = await loop.run_in_executor(executor, partial(processing_functions.generate_star_file,stack_label=stack_label, working_directory = config["working_directory"], previous_classes_bool = True, merge_star=True, recent_class=config["cycles"][-1]["name"], start_cycle_number=start_cycle_number))
+            particle_count, particles_per_process, _ = await loop.run_in_executor(executor, partial(processing_functions.calculate_particle_statistics,filename=os.path.join(config["working_directory"],new_star_file), class_number=int(config["settings"]["class_number"]), particles_per_class=int(config["settings"]["particles_per_class"]), process_count=process_count))
             class_fraction = 1.0
 
         if config["settings"]["classification_type"] == "abinit":
@@ -445,13 +460,11 @@ async def execute_job_loop(config):
         else:
             config["job_status"] = "listening"
             config["kill_job"] = False
-        os.chdir(install_directory)
-        log.info("Done with job - sending result to all clients")
+        live2dlog.info("Done with job - sending result to all clients")
         return_message = await generate_job_finished_message(config)
         await message_all_clients(return_message)
     except Exception:
-        log.exception("Job Loop Failed")
-        os.chdir(install_directory)
+        live2dlog.exception("Job Loop Failed")
         if config["kill_job"]:
             config["job_status"] = "stopped"
             config["kill_job"] = False
@@ -500,8 +513,8 @@ def main():
     config["kill_job"] = False
     config["counting"] = False
     class_path_dict["path"] = os.path.join(config["working_directory"], "class_images")
-    global log
-    log = initialize_logger(config)
+    global live2dlog
+    live2dlog = initialize_logger(config)
 
     global options
     options = define_options()

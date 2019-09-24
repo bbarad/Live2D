@@ -1,3 +1,21 @@
+#! /usr/bin/env python
+
+#
+# Copyright 2019 Genentech Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 """Server controls for Live 2D Classification
 ===============================================
 This is a group of utility functions for the Live 2D Classification webserver related to handling of websocket messages and manipulation of settings as stored in the config dictionary/JSON file.
@@ -17,7 +35,7 @@ import xml.etree.ElementTree as ET
 import tornado.template
 loader = tornado.template.Loader(os.path.dirname(__file__))
 # import processing_functions
-log = logging.getLogger("live_2d")
+live2dlog = logging.getLogger("live_2d")
 
 def initialize_logger(config):
     """
@@ -27,26 +45,25 @@ def initialize_logger(config):
     Returns:
         :py:class:`logging.Logger`: logger that prints to a logfile and to ``STDOUT``.
     """
-    for handler in log.handlers[:]:
-        handler.close()
-        log.removeHandler(handler)
-    log.setLevel("INFO")
+    live2dlog.handlers = []
+    live2dlog.setLevel("INFO")
     # c_handler = logging.StreamHandler(sys.stdout)
     # c_format=logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     # c_handler.setFormatter(c_format)
     # c_handler.setLevel(logging.DEBUG)
 
     filename = os.path.join(config["working_directory"], config["logfile"])
+    print(filename)
     f_handler = logging.FileHandler(filename, mode='a')
     f_format = logging.Formatter('%(message)s')
     f_handler.setFormatter(f_format)
     f_handler.setLevel(logging.INFO)
 
-    # log.addHandler(c_handler)
-    log.addHandler(f_handler)
-    print(log)
+    # live2dlog.addHandler(c_handler)
+    live2dlog.addHandler(f_handler)
+    print(live2dlog)
 
-    return log
+    return live2dlog
 
 # Configuration of live processing settings
 def print_config(config):
@@ -58,7 +75,7 @@ def print_config(config):
     """
     print(json.dumps(config, indent=2))
 
-def load_config(filename="latest_run.json"):
+def load_config(filename):
     """
     Load config from JSON file
 
@@ -95,10 +112,10 @@ def update_config_from_warp(config):
         warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
         print(warp_value_cutoff)
     except:
-        log.error("No particles are set to export.")
+        live2dlog.error("No particles are set to export.")
         return False
 
-    log.info(f"Before checks, {config['next_run_new_particles']}")
+    live2dlog.info(f"Before checks, {config['next_run_new_particles']}")
     if not config["settings"]["box_size"] == box_size:
         print("Changed config", config["settings"]["box_size"], box_size)
         config["settings"]["box_size"] = box_size
@@ -114,7 +131,7 @@ def update_config_from_warp(config):
         config["settings"]["warp_value_cutoff"] = warp_value_cutoff
         config["next_run_new_particles"] = True
         config["force_abinit"] = True
-    log.info(f"After checks, {config['next_run_new_particles']}")
+    live2dlog.info(f"After checks, {config['next_run_new_particles']}")
     dump_json(config)
     return True
 
@@ -137,16 +154,16 @@ def create_new_config(warp_folder, working_directory):
         bin = float(root.find("Import/*[@Name='BinTimes']").get("Value"))
         pixel_size = pixel_size_raw*(2**bin)
     except:
-        log.error("Pixel size could not be extracted.")
+        live2dlog.error("Pixel size could not be extracted.")
         return False
 
     try:
         mask_radius = root.find("Picking/*[@Name='Diameter']").get("Value")
         mask_radius = int(mask_radius)
-        mask_radius = int(mask_radius*.75) # particle diameter / 2 for radius, then multiply by 1.5 for mask space - then round to an integer
+        mask_radius = int(mask_radius*.6) # particle diameter / 2 for radius, then multiply by 1.2 for mask space - then round to an integer
 
     except:
-        log.error("Mask Radius could not be extracted.")
+        live2dlog.error("Mask Radius could not be extracted.")
         return False
 
     try:
@@ -155,14 +172,13 @@ def create_new_config(warp_folder, working_directory):
         neural_net = root.find("Picking/*[@Name='ModelPath']").get("Value")
         warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
     except:
-        log.error("No particles are set to export.")
+        live2dlog.error("No particles are set to export.")
         return False
 
     config = {
     "warp_folder": warp_folder,
     "working_directory": working_directory,
     "logfile": "logfile.txt",
-    "process_count": 32,
     "settings": {
         "box_size": box_size,
         "warp_value_cutoff": warp_value_cutoff,
@@ -205,26 +221,28 @@ def change_warp_directory(warp_folder, working_directory, config):
         ``false`` otherwise
     """
     if not os.path.isfile(os.path.join(warp_folder, "previous.settings")):
-        log.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder. If that folder is misformed, you might have your warp_prefix and warp_suffix settings wrong in server_settings.conf.")
+        live2dlog.warn(f"It doesn't look like there is a warp job set up to run in this folder: {warp_folder}. The user-requested folder change has been aborted until a previous.settings file is detected in the folder. If that folder is misformed, you might have your warp_prefix and warp_suffix settings wrong in server_settings.conf.")
         return False
-    log.debug("Found previous.settings file. Preparing to change folders.")
+    live2dlog.debug("Found previous.settings file. Preparing to change folders.")
     # working_directory = os.path.join(warp_folder, "classification")
     if not os.path.isdir(working_directory):
         os.mkdir(working_directory)
     configfile = os.path.join(working_directory, "latest_run.json")
     new_config = {}
     if os.path.isfile(configfile):
-        log.debug("Detected an existing config file in that warp folder, so we're loading that one.")
+        live2dlog.debug("Detected an existing config file in that warp folder, so we're loading that one.")
         new_config = load_config(configfile)
         new_config["job_status"] = "stopped"
         new_config["kill_job"] = False
     else:
-        log.debug("There doesn't appear to be a config yet - generating one.")
+        live2dlog.debug("There doesn't appear to be a config yet - generating one.")
         # working_directory = os.path.join(warp_folder, "classification")
         new_config = create_new_config(warp_folder, working_directory)
         if not new_config:
             return False
+    print(config["working_directory"])
     config.update(new_config)
+    print(config["working_directory"])
     return True
 
 
@@ -301,7 +319,7 @@ async def update_settings(config, data):
         try:
             config["settings"][key] = data[key]
         except:
-            log.info("Setting not found to update: {}".format(key))
+            live2dlog.info("Setting not found to update: {}".format(key))
     dump_json(config)
     message = {}
     message["type"] = "settings_update"

@@ -1,3 +1,21 @@
+#! /usr/bin/env python
+
+#
+# Copyright 2019 Genentech Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 """
 Processing functions for Live 2D Classification
 ===============================================
@@ -24,11 +42,10 @@ import time
 import mrcfile
 import numpy as np
 import pandas
-from pyem import star
 import scipy.misc
 import sys
 
-log = logging.getLogger("live_2d")
+live2dlog = logging.getLogger("live_2d")
 
 
 def isheader(string):
@@ -79,10 +96,33 @@ def count_particles_per_class(star_filename):
         cr[cr<0] = 0
         class_counter = np.bincount(cr)
         class_counter_list = [int(i) for i in class_counter]
-        log.info(f"Particles per class: {class_counter_list}")
+        live2dlog.info(f"Particles per class: {class_counter_list}")
     return class_counter_list
 
+def load_star_as_dataframe(star_filename):
+    """Generate a pandas dataframe from a star file with one single data loop.
+    Written for high efficiency. Star headers have the leading _ stripped and are turned into the pandas header.
+    Extra comment lines after the header loop_ are currently unsupported and should be removed. before loading.
 
+    Args:
+        star_filename (str): Filename of the star file from Warp (relion style)
+    Return:
+        :py:class:`pandas.Dataframe`: Pandas dataframe from the star file.
+    """
+    with open(star_filename) as f:
+        pos = 0
+        columns = []
+        cur_line = f.readline()
+        while not cur_line.startswith("loop_"):
+            cur_line = f.readline()
+        cur_line = f.readline()
+        while cur_line.startswith("_"):
+            pos = f.tell()
+            columns.append(cur_line.split()[0][1:])
+            cur_line = f.readline()
+        f.seek(pos)
+        df = pandas.read_csv(f, delim_whitespace=True, names=columns)
+    return df
 
 
 async def particle_count_difference(warp_stack, previous_number):
@@ -123,10 +163,10 @@ def make_photos(basename, working_directory):
     if not os.path.isdir(os.path.join(working_directory,"class_images",basename)):
         os.mkdir(os.path.join(working_directory,"class_images",basename))
     photo_dir = os.path.join(working_directory,"class_images",basename)
-    with mrcfile.open("{}.mrc".format(basename), "r") as stack:
+    with mrcfile.open(os.path.join(working_directory,"{}.mrc".format(basename)), "r") as stack:
         for index,item in enumerate(stack.data):
             scipy.misc.imsave(os.path.join(photo_dir,"{}.png".format(index+1)), item)
-    log.info(f"Exported class averages to web-friendly images stored in {photo_dir}")
+    live2dlog.info(f"Exported class averages to web-friendly images stored in {photo_dir}")
     return photo_dir
 
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory, new_net=False):
@@ -142,40 +182,40 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     Returns:
         int: Total number of particles in the combined stack.
     """
-    log.info("=======================================")
-    log.info("Combining Stacks of Particles from Warp")
-    log.info("=======================================")
+    live2dlog.info("=======================================")
+    live2dlog.info("Combining Stacks of Particles from Warp")
+    live2dlog.info("=======================================")
     start_time = time.time()
-    starting_directory = os.getcwd()
+    # starting_directory = os.getcwd()
     combined_filename = os.path.join(working_directory,"{}.mrcs".format(stack_label))
     previous_file = os.path.isfile(combined_filename)
     if new_net:
         # Hack to overwrite the old file if you switch to a new neural net.
-        log.info("Due to config changes, forcing complete reimport of particles.")
+        live2dlog.info("Due to config changes, forcing complete reimport of particles.")
         previous_file = False
-    os.chdir(warp_folder)
-    total_particles = star.parse_star(warp_star_filename)
+    # os.chdir(warp_folder)
+    total_particles = load_star_as_dataframe(os.path.join(warp_folder, warp_star_filename))
     stacks_filenames = total_particles["rlnImageName"].str.rsplit("@").str.get(-1)
 
     # MAKE PRELIMINARY STACK IF ITS NOT THERE
     if not previous_file:
-        log.info("No previous particle stack is being appended.")
-        log.info("Copying first mrcs file to generate seed for combined stack")
-        shutil.copy(stacks_filenames[0], combined_filename)
+        live2dlog.info("No previous particle stack is being appended.")
+        live2dlog.info("Copying first mrcs file to generate seed for combined stack")
+        shutil.copy(os.path.join(warp_folder, stacks_filenames[0]), combined_filename)
 
     # GET INFO ABOUT STACKS
     with mrcfile.mmap(combined_filename, "r", permissive=True) as mrcs:
         prev_par = int(mrcs.header.nz)
-        log.info("Previous Particles: {}".format(prev_par))
+        live2dlog.info("Previous Particles: {}".format(prev_par))
         new_particles_count = len(total_particles) - prev_par
-        log.info("Total Particles to Import: {}".format(new_particles_count))
+        live2dlog.info("Total Particles to Import: {}".format(new_particles_count))
         # print(prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize+ mrcs.header.nbytes + mrcs.extended_header.nbytes)
         # print(mrcs.data.base.size())
         offset = prev_par * mrcs.header.nx * mrcs.header.ny * mrcs.data.dtype.itemsize + mrcs.header.nbytes + mrcs.extended_header.nbytes
-        # log.info("Bytes Offset: {}".format(offset))
+        # live2dlog.info("Bytes Offset: {}".format(offset))
         data_dtype = mrcs.data.dtype
-        # log.info("dtype: {}".format(data_dtype))
-        # log.info("dtype size: {}".format(data_dtype.itemsize))
+        # live2dlog.info("dtype: {}".format(data_dtype))
+        # live2dlog.info("dtype size: {}".format(data_dtype.itemsize))
         shape=(new_particles_count, mrcs.header.ny, mrcs.header.nx)
 
     # OPEN THE MEMMAP AND ITERATIVELY ADD NEW PARTICLES
@@ -187,14 +227,14 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         try_number = 0
         wanted_z = filename_counts[filename]
         while(True):
-            with mrcfile.mmap(filename, "r+", permissive=True) as partial_mrcs:
+            with mrcfile.mmap(os.path.join(warp_folder,filename), "r+", permissive=True) as partial_mrcs:
                 x = partial_mrcs.header.nx
                 y = partial_mrcs.header.ny
                 z = partial_mrcs.header.nz
                 if not z == wanted_z:
                     if try_number >= 12:
                         raise IOError(errno.EIO,f"The data header didn't match the starfile: {z}, {wanted_z}")
-                    log.warn(f"File {filename} has a header that doesn't match the number of particles in the star file.")
+                    live2dlog.warn(f"File {filename} has a header that doesn't match the number of particles in the star file.")
                     try_number +=1
                     time.sleep(10)
                     continue
@@ -202,13 +242,13 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
                 if not x*y*wanted_z == partial_mrcs.data.size:
                     if try_number >= 12:
                         raise IOError(errno.ETIME, "Took too long for Warp to correct the file. Killing job.")
-                    log.warn(f"File {filename} seems to not be done writing from Warp. Waiting 10 seconds and trying again.")
+                    live2dlog.warn(f"File {filename} seems to not be done writing from Warp. Waiting 10 seconds and trying again.")
                     try_number +=1
                     time.sleep(10)
                     continue
 
                 mrcfile_raw[new_offset:new_offset+z,:,:] = partial_mrcs.data
-                log.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
+                live2dlog.info("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                 # print("Filename {} ({} of {}) contributing {} particles starting at {}".format(filename, index+1, len(new_filenames), z, new_offset))
                 new_offset = new_offset+z
                 break
@@ -221,9 +261,8 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         assert os.stat(combined_filename).st_size == mrcs.header.nbytes+mrcs.extended_header.nbytes + mrcs.header.nx*mrcs.header.ny*len(total_particles)*mrcs.data.dtype.itemsize
         mrcs.header.nz = mrcs.header.mz = len(total_particles)
 
-    os.chdir(working_directory)
     #WRITE OUT STAR FILE
-    log.info("Writing out new star file for combined stacks.")
+    live2dlog.info("Writing out new star file for combined stacks.")
     with open(os.path.join(working_directory,"{}.star".format(stack_label)),"w") as file:
         file.write(" \ndata_\n \nloop_\n")
         input = ["{} #{}".format(value, index+1) for index,value in enumerate([
@@ -279,9 +318,9 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             ]
             file.write("\t".join(row_data))
             file.write("\n")
-    os.chdir(starting_directory)
+    # os.chdir(starting_directory)
     end_time = time.time()
-    log.info("Total Time To Import New Particles: {}s".format(end_time - start_time))
+    live2dlog.info("Total Time To Import New Particles: {}s".format(end_time - start_time))
     return len(total_particles)
 
 
@@ -310,11 +349,11 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
     if autocenter == True:
         autocenter_text = "Yes"
     input = "\n".join([
-        input_stack, # Input MRCS stack
-        new_star_file, # Input Star file
+        os.path.join(working_directory,input_stack), # Input MRCS stack
+        os.path.join(working_directory,new_star_file), # Input Star file
         os.devnull, # Input MRC classes
         os.devnull, # Output star file
-        "cycle_{}.mrc".format(start_cycle_number), # Output MRC class
+        os.path.join(working_directory, "cycle_{}.mrc".format(start_cycle_number)), # Output MRC class
         str(class_number), # number of classes to generate for the first time - only use when starting a NEW classification
         "1", # First particle in stack to use
         "0", # Last particle in stack to use - 0 is the final.
@@ -341,9 +380,9 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
     ])
     p = subprocess.Popen("refine2d", stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
-    log.info(out.decode('utf-8'))
+    live2dlog.info(out.decode('utf-8'))
 
-def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, process_count=32, working_directory = "~", automask = False, autocenter = True):
+def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, smoothing_factor = 1.0, process_count=32, working_directory = "~", automask = False, autocenter = True):
     """
     Call out to cisTEM2 ``refine2d`` using :py:func:`subprocess.Popen` to generate a new partial set of *Refined* classes for a slice of a particle stack (used in parallel with other slices).
 
@@ -380,11 +419,11 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         autocenter_text = "Yes"
 
     input = "\n".join([
-        input_stack, # Input MRCS stack
-        input_star_filename, # Input Star file
-        "cycle_{0}.mrc".format(round), # Input MRC classes
-        "partial_classes_{0}_{1}.star".format(round+1, process_number), # Output Star file
-        "cycle_{0}.mrc".format(round+1), # Output MRC classes
+        os.path.join(working_directory,input_stack), # Input MRCS stack
+        os.path.join(working_directory,input_star_filename), # Input Star file
+        os.path.join(working_directory, "cycle_{0}.mrc".format(round)), # Input MRC classes
+        os.path.join(working_directory,"partial_classes_{0}_{1}.star".format(round+1, process_number)), # Output Star file
+        os.path.join(working_directory, "cycle_{0}.mrc".format(round+1)), # Output MRC classes
         "0", # number of classes to generate for the first time - only use when starting a NEW classification
         str(start), # First particle in stack to use
         str(stop), # Last particle in stack to use - 0 is the final.
@@ -398,7 +437,7 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         str(high_res_limit), # High Resolution Limit
         "{0}".format(angular_search_step), #Angular Search
         "{0}".format(max_search_range), #XY Search
-        "1", #Tuning
+        "{:.2f}".format(smoothing_factor), #Tuning
         "2", # Tuning
         "Yes", #Normalize
         "Yes", #invert
@@ -406,20 +445,20 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         automask_text, #Automask
         autocenter_text, #Autocenter
         "Yes", #Dump Dat
-        "dump_file_{0}.dat".format(process_number+1),
+        os.path.join(working_directory,"dump_file_{0}.dat".format(process_number+1)),
         "1", # Max threads
     ])
 
     # if process_number=0:
-    #     log.info(input)
+    #     live2dlog.info(input)
     p = subprocess.Popen("refine2d", shell=True, stdout=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
     end_time = time.time()
     time = end_time - start_time
-    log.info("Successful return of process number {0} out of {1} in time {2:0.1f} seconds".format(process_number+1, process_count, time))
+    live2dlog.info("Successful return of process number {0} out of {1} in time {2:0.1f} seconds".format(process_number+1, process_count, time))
     return(out)
 
-def merge_star_files(cycle, process_count=32, working_directory = "~"):
+def merge_star_files(cycle: int, process_count: int, working_directory: str):
     """
     Combine output partial class star files from a parallelized ``refine2d`` job into a single monolithic cisTEM2 classification star file.
 
@@ -430,10 +469,10 @@ def merge_star_files(cycle, process_count=32, working_directory = "~"):
     Returns:
         str: path to new classification star file.
     """
-    filename = "cycle_{}.star".format(cycle+1)
+    filename = os.path.join(working_directory, "cycle_{}.star".format(cycle+1))
     with open(filename, 'wb') as outfile:
         for process_number in range(process_count):
-            with open("partial_classes_{}_{}.star".format(cycle+1, process_number), 'rb') as infile:
+            with open(os.path.join(working_directory, "partial_classes_{}_{}.star".format(cycle+1, process_number)), 'rb') as infile:
                 if process_number == 0:
                     for line in infile:
                         outfile.write(line)
@@ -442,13 +481,13 @@ def merge_star_files(cycle, process_count=32, working_directory = "~"):
                         if not isheader(line):
                             outfile.write(line)
             try:
-                subprocess.Popen("/bin/rm partial_classes_{}_{}.star".format(cycle+1, process_number), shell=True)
+                os.remove(os.path.join(working_directory,"partial_classes_{}_{}.star".format(cycle+1, process_number)))
             except:
-                log.warn("Failed to remove file partial_classes_{}_{}.star".format(cycle+1, process_number))
-    log.info("Finished writing cycle_{}.star".format(cycle+1))
-    return os.path.join(working_directory, "cycle_{}.star".format(cycle+1))
+                live2dlog.warn("Failed to remove file partial_classes_{}_{}.star".format(cycle+1, process_number))
+    live2dlog.info("Finished writing cycle_{}.star".format(cycle+1))
+    return filename
 
-def merge_2d_subjob(cycle, process_count=32):
+def merge_2d_subjob(cycle, working_directory, process_count=32):
     """
     Call out to cisTEM2 ``merge2d`` using :py:func:`subprocess.Popen` to complete a new set of *Refined* class ``.mrc`` files from partial classes output from ``refine2d``.
 
@@ -457,18 +496,18 @@ def merge_2d_subjob(cycle, process_count=32):
         process_count (int): Number of processes used for parallelizing the ``refine2d`` job.
     """
     input = "\n".join([
-        "cycle_{0}.mrc".format(cycle+1),
-        "dump_file_.dat",
+        os.path.join(working_directory, "cycle_{0}.mrc".format(cycle+1)),
+        os.path.join(working_directory, "dump_file_.dat"),
         str(process_count)
     ])
     p = subprocess.Popen("merge2d", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     out,_ = p.communicate(input=input.encode('utf-8'))
-    log.info(out.decode('utf-8'))
+    live2dlog.info(out.decode('utf-8'))
     for i in range(process_count):
         try:
-            p = subprocess.Popen("/bin/rm dump_file_{}.dat".format(i+1), shell=True)
+            os.remove(os.path.join(working_directory, "dump_file_{}.dat".format(i+1)))
         except:
-            log.warn("Failed to remove file dump_file_{}.dat".format(i+1))
+            live2dlog.warn("Failed to remove file dump_file_{}.dat".format(i+1))
 
 
 def calculate_particle_statistics(filename, class_number=50, particles_per_class=300, process_count = 32):
@@ -514,7 +553,7 @@ def append_new_particles(old_particles, new_particles, output_filename):
     """
     with open(output_filename, 'w') as append_file:
         old_header_length = 0
-        log.info(old_particles)
+        live2dlog.info(old_particles)
         with open(old_particles) as f:
             for i,l in enumerate(f):
                 append_file.write(l)
@@ -529,7 +568,7 @@ def append_new_particles(old_particles, new_particles, output_filename):
                     new_header_length +=1
                     continue
                 if i == new_header_length + old_particle_count:
-                    log.info(i)
+                    live2dlog.info(i)
                 if i > new_header_length + old_particle_count:
                     append_file.write(l)
                     new_particles_count += 1
@@ -564,16 +603,16 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
     """
     star_file = os.path.join(working_directory, "{}.star".format(stack_label))
     if previous_classes_bool and not merge_star:
-        log.info("Previous classes will not be used, and a new star will be written at cycle_{}.star".format(start_cycle_number))
+        live2dlog.info("Previous classes will not be used, and a new star will be written at cycle_{}.star".format(start_cycle_number))
         new_star_file = os.path.join(working_directory, "cycle_{}.star".format(start_cycle_number))
         shutil.copy(star_file, new_star_file)
     elif previous_classes_bool:
-        log.info("It looks like previous jobs have been run in this directory. The most recent output star file is: {}.star".format(recent_class))
+        live2dlog.info("It looks like previous jobs have been run in this directory. The most recent output star file is: {}.star".format(recent_class))
         new_star_file = os.path.join(working_directory,"{}_appended.star".format(recent_class))
-        log.info("Instead of cycle_0.star, the new particle information will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
+        live2dlog.info("Instead of cycle_0.star, the new particle information will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
         total_particles = append_new_particles(old_particles=os.path.join(working_directory,"{}.star".format(recent_class)), new_particles=star_file, output_filename = new_star_file)
     else:
-        log.info("No previous classification cycles were found. A new classification star file will be generated at cycle_0.star")
+        live2dlog.info("No previous classification cycles were found. A new classification star file will be generated at cycle_0.star")
         new_star_file = os.path.join(working_directory,"cycle_0.star")
         shutil.copy(star_file, new_star_file)
     return new_star_file
@@ -583,9 +622,9 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
 
 
 if __name__=="__main__":
-    log.info("This is a function library and should not be called directly.")
+    live2dlog.info("This is a function library and should not be called directly.")
     import_new_particles("combined_stack_test.mrcs", "/gne/data/cryoem/DATA_COLLECTIONS/WARP/190730_Proteasome_Krios_grid_001803_session_000794/", "allparticles_GenentechNet2Mask_20190730.star", "/gne/data/cryoem/DATA_COLLECTIONS/WARP/190730_Proteasome_Krios_grid_001803_session_000794/classification", new_net=True)
-    # log.info("Testing particle import with streaming")
+    # live2dlog.info("Testing particle import with streaming")
     # stack_label="streaming_combine"
     # warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
     # warp_star_filename = "allparticles_GenentechNet2Mask_20190627.star"
