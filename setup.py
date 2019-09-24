@@ -39,8 +39,8 @@ requires = [
 
 setup(
     name="live2d",
-    version="0.9",
-    description="Web-interface (tornado driven) for on-the-fly 2d classification of single particle electron microscopy data using warp and cistem",
+    version="1.0.0",
+    description="Web-interface (tornado driven) for on-the-fly 2d classification of single particle electron microscopy data using warp and cisTEM",
     author="Benjamin Barad",
     author_email="benjamin.barad@gmail.com",
     keywords="cryoem warp cistem tornado ",
