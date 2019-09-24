@@ -17,7 +17,7 @@ import sys
 import tornado
 # sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../live_2d'))
+sys.path.insert(0, os.path.abspath('../live2d'))
 import mock
 MOCK_MODULES = []
 for mod_name in MOCK_MODULES:

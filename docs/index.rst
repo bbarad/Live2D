@@ -1,19 +1,19 @@
 Welcome to Live 2D Classification's documentation!
 ==================================================
 
-``live_2d``
+``Live2D``
 ==================================================
-.. automodule:: live_2d
+.. automodule:: live2d
   :members:
 
-``live_2d.processing_functions``
+``live2d.processing_functions``
 ==================================================
-.. automodule:: live_2d.processing_functions
+.. automodule:: live2d.processing_functions
   :members:
 
-``live_2d.controls``
+``live2d.controls``
 ==================================================
-.. automodule:: live_2d.controls
+.. automodule:: live2d.controls
   :members:
 
 

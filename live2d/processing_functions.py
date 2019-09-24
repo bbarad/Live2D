@@ -99,6 +99,7 @@ def count_particles_per_class(star_filename):
         live2dlog.info(f"Particles per class: {class_counter_list}")
     return class_counter_list
 
+
 def load_star_as_dataframe(star_filename):
     """Generate a pandas dataframe from a star file with one single data loop.
     Written for high efficiency. Star headers have the leading _ stripped and are turned into the pandas header.
