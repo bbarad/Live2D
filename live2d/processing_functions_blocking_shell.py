@@ -1,3 +1,21 @@
+#! /usr/bin/env python
+
+#
+# Copyright 2019 Genentech Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import glob
 import itertools
 from math import ceil
@@ -9,7 +27,6 @@ import time
 import mrcfile
 import numpy as np
 import pandas
-from pyem import star
 import scipy.misc
 
 def isheader(string):
@@ -39,6 +56,31 @@ def make_photos(basename, working_directory):
 def change_warp_folder(new_folder):
     pass
 
+def load_star_as_dataframe(star_filename):
+    """Generate a pandas dataframe from a star file with one single data loop.
+    Written for high efficiency. Star headers have the leading _ stripped and are turned into the pandas header.
+    Extra comment lines after the header loop_ are currently unsupported and should be removed. before loading.
+
+    Args:
+        star_filename (str): Filename of the star file from Warp (relion style)
+    returns:
+        :py:class:`pandas.Dataframe`: dataframe from the star file.
+    """
+    with open(star_filename) as f:
+        pos = 0
+        columns = []
+        cur_line = f.readline()
+        while not cur_line.startswith("loop_"):
+            cur_line = f.readline()
+        cur_line = f.readline()
+        while cur_line.startswith("_"):
+            pos = f.tell()
+            columns.append(cur_line.split()[0][1:])
+            cur_line = f.readline()
+        f.seek(pos)
+        df = pandas.read_csv(f, delim_whitespace=True, names=columns)
+    return df
+
 
 def import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory, new_net=False):
     """Function to generate new image stacks based only on the results of the first stack. Also, while I am doing it, I will write out a base star file to use for appending and/or regenerating for further class files.
@@ -53,7 +95,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         # Hack to overwrite the old file if you switch to a new neural net.
         previous_file = False
     os.chdir(warp_folder)
-    total_particles = star.parse_star(warp_star_filename)
+    total_particles = load_star_as_dataframe(warp_star_filename)
     print(len(total_particles))
     stacks_filenames = total_particles["rlnImageName"].str.rsplit("@").str.get(-1)
 

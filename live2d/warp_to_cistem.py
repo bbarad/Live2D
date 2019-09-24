@@ -1,18 +1,33 @@
-### Process warp data to prepare for Frealign. Requires relion_preprocess and star_to_par.com
-# import asyncio
+#! /usr/bin/env python
 
-import itertools
+# Copyright 2019 Genentech Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Process warp data to prepare for Frealign. Requires relion_preprocess
+# and `star_to_par.com`
+
 from functools import partial
-from math import ceil
 import multiprocessing
 import os
-import subprocess
-from sys import argv
 import time
 
 import processing_functions_blocking_shell as processing_functions
 
-# Process arguments and memorize the starting directory to move back to at the end of the script - NB if the script crashes the user gets dumped into the wrong place - I will need to fix that...
+# Process arguments and memorize the starting directory to move back to at the
+# end of the script - NB if the script crashes the user gets dumped into the
+# wrong place - I will need to fix that...
 
 # Starting Info
 warp_directory = "/local/scratch/krios/Warp_Transfers/TestData"
