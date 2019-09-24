@@ -31,7 +31,7 @@ requires = [
     "multiprocess>=0.70.8",
     "numpy>=1.16.2",
     "pandas>=0.24.2",
-    "scipy>=1.2.1",
+    "imageio>=2.5.0",
     "terminado>=0.8.1",
     "Sphinx==2.2.0",
     "uvloop==0.13.0"

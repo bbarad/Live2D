@@ -27,7 +27,7 @@ import time
 import mrcfile
 import numpy as np
 import pandas
-import scipy.misc
+import imageio
 
 def isheader(string):
     if string.startswith("_".encode("utf-8")):
@@ -50,7 +50,7 @@ def make_photos(basename, working_directory):
     photo_dir = os.path.join(working_directory,"class_images",basename)
     with mrcfile.open("{}.mrc".format(basename), "r") as stack:
         for index,item in enumerate(stack.data):
-            scipy.misc.imsave(os.path.join(photo_dir,"{}.png".format(index+1)), item)
+            imageio.imwrite(os.path.join(photo_dir,"{}.png".format(index+1)), item)
     return photo_dir
 
 def change_warp_folder(new_folder):

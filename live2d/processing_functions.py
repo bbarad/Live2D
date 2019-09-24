@@ -42,7 +42,7 @@ import time
 import mrcfile
 import numpy as np
 import pandas
-import scipy.misc
+import imageio
 import sys
 
 live2dlog = logging.getLogger("live_2d")
@@ -166,7 +166,7 @@ def make_photos(basename, working_directory):
     photo_dir = os.path.join(working_directory,"class_images",basename)
     with mrcfile.open(os.path.join(working_directory,"{}.mrc".format(basename)), "r") as stack:
         for index,item in enumerate(stack.data):
-            scipy.misc.imsave(os.path.join(photo_dir,"{}.png".format(index+1)), item)
+            imageio.imwrite(os.path.join(photo_dir,"{}.png".format(index+1)), item)
     live2dlog.info(f"Exported class averages to web-friendly images stored in {photo_dir}")
     return photo_dir
 

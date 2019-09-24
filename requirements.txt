@@ -2,7 +2,7 @@ mrcfile==1.1.2 # BSD
 multiprocess==0.70.8 # BSD
 numpy==1.16.2 # BSD
 pandas==0.24.2 # BSD
-scipy==1.2.1 # BSD
+imageio==2.5.0 # BSD
 Sphinx==2.2.0 # BSD
 terminado==0.8.1 # BSD
 tornado==6.0.2 # Apache 2.0
