@@ -325,7 +325,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
     return len(total_particles)
 
 
-def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, low_res = 300, high_res = 40, new_star_file = "cycle_0.star", working_directory = "~", automask = False, autocenter = True):
+def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="combined_stack.mrcs", pixel_size=1.2007, mask_radius = 150, low_res = 300, high_res = 40, new_star_file = "cycle_0.star", working_directory = "~", automask = False, autocenter = True):
     """
     Call out to cisTEM2 ``refine2d`` using :py:func:`subprocess.Popen` to generate a new set of *Ab Initio* classes.
 
@@ -334,6 +334,7 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
         class_number (int): Number of class seeds to generate (default 50)
         input_stack (str): Filename of combined monolithic particle stack
         pixel_size (int): Pixel size of image files, in Å.
+        mask_radius (int): Radius in Å to use for mask (default 150).
         low_res (float): Low resolution cutoff for classification, in Å.
         high_res (float): High resolution cutoff for classification, in Å.
         new_star_file (str): Filename of starting cisTEM-formatted star file.
@@ -363,7 +364,7 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
         # "300", # keV
         # "2.7", # Cs
         # "0.07", # Amplitude Contrast
-        "150", # Mask Radius in Angstroms
+        str(mask_radius), # Mask Radius in Angstroms
         str(low_res), # Low Resolution Limit
         str(high_res), # High Resolution Limit
         "0", #Angular Search
@@ -383,7 +384,7 @@ def generate_new_classes(start_cycle_number=0, class_number=50, input_stack="com
     out,_ = p.communicate(input=input.encode('utf-8'))
     live2dlog.info(out.decode('utf-8'))
 
-def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, smoothing_factor = 1.0, process_count=32, working_directory = "~", automask = False, autocenter = True):
+def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.star", input_stack = "combined_stack.mrcs", particles_per_process = 100,mask_radius=150, low_res_limit=300, high_res_limit = 40, class_fraction = 1.0, particle_count=20000, pixel_size=1, angular_search_step=15.0, max_search_range=49.5, smoothing_factor = 1.0, process_count=32, working_directory = "~", automask = False, autocenter = True):
     """
     Call out to cisTEM2 ``refine2d`` using :py:func:`subprocess.Popen` to generate a new partial set of *Refined* classes for a slice of a particle stack (used in parallel with other slices).
 
@@ -392,6 +393,7 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         input_stack (str): Filename of combined monolithic particle stack
         particles_per_process (int): Number of particles to classify in this job.
         process_count (int): How many processes have run before this one (assumes other processes have classified the same number of particles).
+        mask_radius (int): Radius in Å to use for mask (default 150).
         low_res (float): Low resolution cutoff for classification, in Å.
         high_res (float): High resolution cutoff for classification, in Å.
         class_fraction (float): Fraction of particles [0-1] in a section to classify. Values below 1 improve speed but have lower SNR in final classes.
@@ -433,7 +435,7 @@ def refine_2d_subjob(process_number, round=0, input_star_filename = "class_0.sta
         # "300", # keV
         # "2.7", # Cs
         # "0.07", # Amplitude Contrast
-        "150", # Mask Radius in Angstroms
+        str(mask_radius), # Mask Radius in Angstroms
         str(low_res_limit), # Low Resolution Limit
         str(high_res_limit), # High Resolution Limit
         "{0}".format(angular_search_step), #Angular Search

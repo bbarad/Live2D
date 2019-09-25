@@ -337,7 +337,7 @@ async def execute_job_loop(config):
             live2dlog.info("============================")
             live2dlog.info("Preparing Initial 2D Classes")
             live2dlog.info("============================")
-            await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"]))
+            await loop.run_in_executor(executor, partial(processing_functions.generate_new_classes, start_cycle_number=start_cycle_number, class_number=int(config["settings"]["class_number"]), input_stack="{}.mrcs".format(stack_label), pixel_size=float(config["settings"]["pixel_size"]), mask_radius = config["settings"]["mask_radius"],low_res=300, high_res=int(config["settings"]["high_res_initial"]), new_star_file=new_star_file, working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"]))
 
             await loop.run_in_executor(executor, processing_functions.make_photos,"cycle_{}".format(start_cycle_number),config["working_directory"])
             classified_count_per_class = [0]*(int(config["settings"]["class_number"])+1) # All classes are empty for the initialization!
@@ -371,7 +371,7 @@ async def execute_job_loop(config):
                 live2dlog.info(f"Number of Particles: {particle_count}")
                 live2dlog.info(f"Dispatching job at {datetime.datetime.now()}")
                 pool = multiprocessing.Pool(processes=process_count)
-                refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
+                refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, mask_radius = config["settings"]["mask_radius"], low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count,working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
                 results_list = await loop.run_in_executor(executor2, pool.map, refine_job, range(process_count))
 
                 pool.close()
@@ -425,7 +425,7 @@ async def execute_job_loop(config):
             live2dlog.info(f"Number of Particles: {particle_count}")
             live2dlog.info(f"Dispatching job at {datetime.datetime.now()}")
             pool = multiprocessing.Pool(processes=int(config["process_count"]))
-            refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
+            refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, mask_radius = config["settings"]["mask_radius"], low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory = config["working_directory"],automask = config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
             results_list = await loop.run_in_executor(executor2,pool.map,refine_job, range(process_count))
             pool.close()
             live2dlog.info(results_list[30].decode('utf-8'))

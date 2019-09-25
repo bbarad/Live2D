@@ -39,7 +39,7 @@ requires = [
 
 setup(
     name="live2d",
-    version="1.0.0",
+    version="1.0.1",
     description="Web-interface (tornado driven) for on-the-fly 2d classification of single particle electron microscopy data using warp and cisTEM",
     author="Benjamin Barad",
     author_email="benjamin.barad@gmail.com",
