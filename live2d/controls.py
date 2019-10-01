@@ -111,7 +111,7 @@ def update_config_from_warp(config):
         print(neural_net)
         warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
         print(warp_value_cutoff)
-    except e as e:
+    except Exception:
         live2dlog.error("No particles are set to export.")
         return False
 
@@ -153,7 +153,7 @@ def create_new_config(warp_folder, working_directory):
         pixel_size_raw = float(root.find("*[@Name='PixelSizeX']").get("Value"))
         bin = float(root.find("Import/*[@Name='BinTimes']").get("Value"))
         pixel_size = pixel_size_raw*(2**bin)
-    except e as e:
+    except Exception:
         live2dlog.error("Pixel size could not be extracted.")
         return False
 
@@ -162,7 +162,7 @@ def create_new_config(warp_folder, working_directory):
         mask_radius = int(mask_radius)
         mask_radius = int(mask_radius*.6)  # particle diameter / 2 for radius, then multiply by 1.2 for mask space - then round to an integer
 
-    except e as e:
+    except Exception:
         live2dlog.error("Mask Radius could not be extracted.")
         return False
 
@@ -171,7 +171,7 @@ def create_new_config(warp_folder, working_directory):
         box_size = root.find("Picking/*[@Name='BoxSize']").get("Value")
         neural_net = root.find("Picking/*[@Name='ModelPath']").get("Value")
         warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
-    except e as e:
+    except Exception:
         live2dlog.error("No particles are set to export.")
         return False
 
@@ -322,7 +322,7 @@ async def update_settings(config, data):
     for key in config["settings"].keys():
         try:
             config["settings"][key] = data[key]
-        except e as e:
+        except Exception:
             live2dlog.debug("Setting not found to update: {}".format(key))
     dump_json(config)
     message = {}
@@ -376,7 +376,7 @@ async def generate_gallery_html(config, gallery_number_selected=-1):
                 current_gal["time"] = cycle["time"]
                 try:
                     current_gal["particle_count_per_class"] = cycle["particle_count_per_class"]
-                except e as e:
+                except Exception:
                     current_gal["particle_count_per_class"] = ["Not Recorded"]*(current_gal["class_count"]+1)
     # Catch nonexistent number or non-supplied number and return the latest class.
     if "number" not in current_gal:
@@ -390,7 +390,7 @@ async def generate_gallery_html(config, gallery_number_selected=-1):
         current_gal["time"] = cycle["time"]
         try:
             current_gal["particle_count_per_class"] = cycle["particle_count_per_class"]
-        except e as e:
+        except Exception:
             current_gal["particle_count_per_class"] = ["Not Recorded"]*(current_gal["class_count"]+1)
     current_gal["entries"] = []
     for i in range(current_gal["class_count"]):
@@ -399,7 +399,7 @@ async def generate_gallery_html(config, gallery_number_selected=-1):
         entry["url"] = os.path.join("/gallery/", current_gal["name"], "{}.png".format(i+1))
         try:
             entry["count"] = current_gal["particle_count_per_class"][i+1]
-        except e as e:
+        except Exception:
             entry["count"] = 0
 
         current_gal["entries"].append(entry)

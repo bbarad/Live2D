@@ -488,7 +488,7 @@ def merge_star_files(cycle: int, process_count: int, working_directory: str):
                             outfile.write(line)
             try:
                 os.remove(os.path.join(working_directory, "partial_classes_{}_{}.star".format(cycle+1, process_number)))
-            except e as e:
+            except Exception:
                 live2dlog.warn("Failed to remove file partial_classes_{}_{}.star".format(cycle+1, process_number))
     live2dlog.info("Finished writing cycle_{}.star".format(cycle+1))
     return filename
@@ -514,7 +514,7 @@ def merge_2d_subjob(cycle, working_directory, process_count=32):
     for i in range(process_count):
         try:
             os.remove(os.path.join(working_directory, "dump_file_{}.dat".format(i+1)))
-        except e as e:
+        except Exception:
             live2dlog.warn("Failed to remove file dump_file_{}.dat".format(i+1))
 
 

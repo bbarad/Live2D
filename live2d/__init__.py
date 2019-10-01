@@ -140,13 +140,18 @@ class SocketHandler(WebSocketHandler):
             while config["counting"]:
                 asyncio.sleep(1)
             if config["job_status"] == "running":
+                live2dlog.info("=============")
+                live2dlog.info("Kill Received")
+                live2dlog.info("=============")
                 config["kill_job"] = True
                 config["job_status"] = "killed"
                 await message_all_clients({"type": "kill_received"})
             elif config["job_status"] == "listening" and not config["counting"]:
                 config["job_status"] = "killed"
                 await message_all_clients({"type": "kill_received"})
-                live2dlog.info("######### HALT RECEIVED ##########")
+                live2dlog.info("=============")
+                live2dlog.info("Kill Received")
+                live2dlog.info("=============")
                 live2dlog.info("Importing newest particles before halting")
                 assert update_config_from_warp(config)
                 _ = await tornado.ioloop.IOLoop.current().run_in_executor(executor, partial(processing_functions.import_new_particles, stack_label=stack_label, warp_folder=config["warp_folder"], warp_star_filename="allparticles_{}.star".format(config["settings"]["neural_net"]), working_directory=config["working_directory"], new_net=config["next_run_new_particles"]))
