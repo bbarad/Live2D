@@ -24,18 +24,16 @@ Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
 """
 
 
-import asyncio
-import base64
 import json
 import logging
 import os
-import sys
 import xml.etree.ElementTree as ET
 
 import tornado.template
 loader = tornado.template.Loader(os.path.dirname(__file__))
 # import processing_functions
 live2dlog = logging.getLogger("live_2d")
+
 
 def initialize_logger(config):
     """
@@ -65,7 +63,7 @@ def initialize_logger(config):
 
     return live2dlog
 
-# Configuration of live processing settings
+
 def print_config(config):
     """
     Utility one-liner to pretty-print the current config
@@ -74,6 +72,7 @@ def print_config(config):
         config (dict): Global settings and results object
     """
     print(json.dumps(config, indent=2))
+
 
 def load_config(filename):
     """
@@ -89,6 +88,7 @@ def load_config(filename):
         config = json.load(configfile)
     # print_config(config)
     return config
+
 
 def update_config_from_warp(config):
     """
@@ -111,7 +111,7 @@ def update_config_from_warp(config):
         print(neural_net)
         warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
         print(warp_value_cutoff)
-    except:
+    except e as e:
         live2dlog.error("No particles are set to export.")
         return False
 
@@ -122,7 +122,7 @@ def update_config_from_warp(config):
         config["next_run_new_particles"] = True
         config["force_abinit"] = True
     if not config["settings"]["neural_net"] == neural_net:
-        print("Changed config",config["settings"]["neural_net"], neural_net)
+        print("Changed config", config["settings"]["neural_net"], neural_net)
         config["settings"]["neural_net"] = neural_net
         config["next_run_new_particles"] = True
         config["force_abinit"] = True
@@ -153,16 +153,16 @@ def create_new_config(warp_folder, working_directory):
         pixel_size_raw = float(root.find("*[@Name='PixelSizeX']").get("Value"))
         bin = float(root.find("Import/*[@Name='BinTimes']").get("Value"))
         pixel_size = pixel_size_raw*(2**bin)
-    except:
+    except e as e:
         live2dlog.error("Pixel size could not be extracted.")
         return False
 
     try:
         mask_radius = root.find("Picking/*[@Name='Diameter']").get("Value")
         mask_radius = int(mask_radius)
-        mask_radius = int(mask_radius*.6) # particle diameter / 2 for radius, then multiply by 1.2 for mask space - then round to an integer
+        mask_radius = int(mask_radius*.6)  # particle diameter / 2 for radius, then multiply by 1.2 for mask space - then round to an integer
 
-    except:
+    except e as e:
         live2dlog.error("Mask Radius could not be extracted.")
         return False
 
@@ -171,38 +171,38 @@ def create_new_config(warp_folder, working_directory):
         box_size = root.find("Picking/*[@Name='BoxSize']").get("Value")
         neural_net = root.find("Picking/*[@Name='ModelPath']").get("Value")
         warp_value_cutoff = root.find("Picking/*[@Name='MinimumScore']").get("Value")
-    except:
+    except e as e:
         live2dlog.error("No particles are set to export.")
         return False
 
     config = {
-    "warp_folder": warp_folder,
-    "working_directory": working_directory,
-    "logfile": "logfile.txt",
-    "settings": {
-        "box_size": box_size,
-        "warp_value_cutoff": warp_value_cutoff,
-        "neural_net": neural_net,
-        "pixel_size": pixel_size,
-        "mask_radius": mask_radius,
-        "high_res_initial": "40",
-        "high_res_final": "8",
-        "run_count_startup": "15",
-        "run_count_refine": "5",
-        "classification_type": "abinit",
-        "particle_count_initial": "30000",
-        "particle_count_update": "50000",
-        "autocenter": True,
-        "automask": False,
-        "class_number": "50",
-        "particles_per_class": "300"
-    },
-    "cycles": [],
-    "counting": False,
-    "job_status": "stopped",
-    "force_abinit": False,
-    "next_run_new_particles": False,
-    "kill_job": False
+        "warp_folder": warp_folder,
+        "working_directory": working_directory,
+        "logfile": "logfile.txt",
+        "settings": {
+            "box_size": box_size,
+            "warp_value_cutoff": warp_value_cutoff,
+            "neural_net": neural_net,
+            "pixel_size": pixel_size,
+            "mask_radius": mask_radius,
+            "high_res_initial": "40",
+            "high_res_final": "8",
+            "run_count_startup": "15",
+            "run_count_refine": "5",
+            "classification_type": "abinit",
+            "particle_count_initial": "30000",
+            "particle_count_update": "50000",
+            "autocenter": True,
+            "automask": False,
+            "class_number": "50",
+            "particles_per_class": "300"
+        },
+        "cycles": [],
+        "counting": False,
+        "job_status": "stopped",
+        "force_abinit": False,
+        "next_run_new_particles": False,
+        "kill_job": False
     }
     return config
 
@@ -246,7 +246,7 @@ def change_warp_directory(warp_folder, working_directory, config):
     return True
 
 
-async def initialize(config, microscope_name = ""):
+async def initialize(config, microscope_name=""):
     """
     Create a response message to send to clients that will include the most recent gallery and the current settings.
 
@@ -262,6 +262,7 @@ async def initialize(config, microscope_name = ""):
     message["microscope_name"] = microscope_name
     return message
 
+
 async def generate_job_finished_message(config):
     """
     Create a response message to send to clients that updates client-side settings with server-side settings
@@ -276,6 +277,7 @@ async def generate_job_finished_message(config):
     message["settings"] = await generate_settings_message(config)
     return message
 
+
 async def get_new_gallery(config, data):
     """
     Create a response message to send to clients that updates client-side settings with gallery HTML
@@ -288,8 +290,9 @@ async def get_new_gallery(config, data):
     """
     message = {}
     message["type"] = "gallery_update"
-    message["gallery_data"] = await generate_gallery_html(config, gallery_number_selected = int(data["gallery_number"]))
+    message["gallery_data"] = await generate_gallery_html(config, gallery_number_selected=int(data["gallery_number"]))
     return message
+
 
 # This should not be async - I don't want a single other thing happening when I write out.
 def dump_json(config):
@@ -300,10 +303,11 @@ def dump_json(config):
         config (dict): Global settings and results object to save.
     """
     config_folder = os.path.join(os.path.expanduser("~"), ".live2d")
-    with open(os.path.join(config_folder,"latest_run.json"), "w") as jsonfile:
+    with open(os.path.join(config_folder, "latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
     with open(os.path.join(config["working_directory"], "latest_run.json"), "w") as jsonfile:
         json.dump(config, jsonfile, indent=2)
+
 
 async def update_settings(config, data):
     """
@@ -318,13 +322,14 @@ async def update_settings(config, data):
     for key in config["settings"].keys():
         try:
             config["settings"][key] = data[key]
-        except:
+        except e as e:
             live2dlog.info("Setting not found to update: {}".format(key))
     dump_json(config)
     message = {}
     message["type"] = "settings_update"
     message["settings"] = await generate_settings_message(config)
     return message
+
 
 async def generate_settings_message(config):
     """
@@ -344,7 +349,7 @@ async def generate_settings_message(config):
     return message
 
 
-async def generate_gallery_html(config, gallery_number_selected = -1):
+async def generate_gallery_html(config, gallery_number_selected=-1):
     """
     Generate HTML for a specified gallery.
 
@@ -371,10 +376,10 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
                 current_gal["time"] = cycle["time"]
                 try:
                     current_gal["particle_count_per_class"] = cycle["particle_count_per_class"]
-                except:
+                except e as e:
                     current_gal["particle_count_per_class"] = ["Not Recorded"]*(current_gal["class_count"]+1)
     # Catch nonexistent number or non-supplied number and return the latest class.
-    if not "number" in current_gal:
+    if "number" not in current_gal:
         cycle = config["cycles"][-1]
         current_gal["name"] = cycle["name"]
         current_gal["number"] = int(cycle["number"])
@@ -385,7 +390,7 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
         current_gal["time"] = cycle["time"]
         try:
             current_gal["particle_count_per_class"] = cycle["particle_count_per_class"]
-        except:
+        except e as e:
             current_gal["particle_count_per_class"] = ["Not Recorded"]*(current_gal["class_count"]+1)
     current_gal["entries"] = []
     for i in range(current_gal["class_count"]):
@@ -394,9 +399,9 @@ async def generate_gallery_html(config, gallery_number_selected = -1):
         entry["url"] = os.path.join("/gallery/", current_gal["name"], "{}.png".format(i+1))
         try:
             entry["count"] = current_gal["particle_count_per_class"][i+1]
-        except:
+        except e as e:
             entry["count"] = 0
 
         current_gal["entries"].append(entry)
     string_loader = loader.load("classmodule.html")
-    return string_loader.generate(current_gallery=current_gal, classification_list = [(int(i["number"]), i["block_type"], i["particle_count"]) for i in config["cycles"]], cachename=config["warp_folder"][-6:]).decode("utf-8")
+    return string_loader.generate(current_gallery=current_gal, classification_list=[(int(i["number"]), i["block_type"], i["particle_count"]) for i in config["cycles"]], cachename=config["warp_folder"][-6:]).decode("utf-8")
