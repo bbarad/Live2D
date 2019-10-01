@@ -53,7 +53,6 @@ particles_per_class_target = 300
 get_new_particles_from_warp = True
 
 
-
 times = []
 times.append(time.time())
 
@@ -73,7 +72,7 @@ particle_count, particles_per_process, class_fraction = processing_functions.cal
 
 
 if not previous_classes_bool:
-    processing_functions.generate_new_classes(class_number=class_number, input_stack="{}.mrcs".format(stack_label), pixel_size = pixel_size, low_res = low_res_limit, high_res = high_res_limit_initial)
+    processing_functions.generate_new_classes(class_number=class_number, input_stack="{}.mrcs".format(stack_label), pixel_size=pixel_size, low_res=low_res_limit, high_res=high_res_limit_initial)
     times.append(time.time())
     print("Generating new classes took {0:.1f} seconds".format(times[-1]-times[-2]))
     new_star_file = "classes_0.star"
@@ -93,12 +92,12 @@ if classify_by_resolution:
         print("High Res Limit: {0:.2}".format(high_res_limit))
         print("Fraction of Particles: {0:.2}".format(class_fraction))
         pool = multiprocessing.Pool(processes=process_count)
-        refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename = new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=pixel_size, angular_search_step=angular_search_step, max_search_range=max_search_range, process_count=process_count)
+        refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename=new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=pixel_size, angular_search_step=angular_search_step, max_search_range=max_search_range, process_count=process_count)
         results_list = pool.map(refine_job, range(process_count))
         pool.close()
         print(results_list[0].decode('utf-8'))
         processing_functions.merge_2d_subjob(filename_number, process_count=process_count)
-        processing_functions.make_photos("classes_{}".format(filename_number+1),working_directory)
+        processing_functions.make_photos("classes_{}".format(filename_number+1), working_directory)
         new_star_file = processing_functions.merge_star_files(filename_number, process_count=process_count)
     start_cycle_number = start_cycle_number + resolution_cycle_count
 
@@ -119,7 +118,7 @@ if run_long_cycles:
         results_list = pool.map(refine_job, range(process_count))
         print(results_list[0].decode('utf-8'))
         processing_functions.merge_2d_subjob(filename_number, process_count=process_count)
-        processing_functions.make_photos("class_{}".format(filename_number+1),working_directory)
+        processing_functions.make_photos("class_{}".format(filename_number+1), working_directory)
         new_star_file = processing_functions.merge_star_files(filename_number, process_count=process_count)
 #
 times.append(time.time())

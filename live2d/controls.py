@@ -115,7 +115,7 @@ def update_config_from_warp(config):
         live2dlog.error("No particles are set to export.")
         return False
 
-    live2dlog.info(f"Before checks, {config['next_run_new_particles']}")
+    # live2dlog.info(f"Before checks, {config['next_run_new_particles']}")
     if not config["settings"]["box_size"] == box_size:
         print("Changed config", config["settings"]["box_size"], box_size)
         config["settings"]["box_size"] = box_size
@@ -131,7 +131,7 @@ def update_config_from_warp(config):
         config["settings"]["warp_value_cutoff"] = warp_value_cutoff
         config["next_run_new_particles"] = True
         config["force_abinit"] = True
-    live2dlog.info(f"After checks, {config['next_run_new_particles']}")
+    # live2dlog.info(f"After checks, {config['next_run_new_particles']}")
     dump_json(config)
     return True
 
@@ -323,7 +323,7 @@ async def update_settings(config, data):
         try:
             config["settings"][key] = data[key]
         except e as e:
-            live2dlog.info("Setting not found to update: {}".format(key))
+            live2dlog.debug("Setting not found to update: {}".format(key))
     dump_json(config)
     message = {}
     message["type"] = "settings_update"

@@ -79,6 +79,7 @@ def count_particles_per_class(star_filename):
     Returns:
         list: List of counts for each class in its respective index, and unclassified count in index 0.
     """
+    live2dlog = logging.getLogger("live_2d")
     with open(star_filename) as f:
         pos = 0
         cur_line = f.readline()
@@ -261,7 +262,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
         mrcs.header.nz = mrcs.header.mz = len(total_particles)
 
     # WRITE OUT STAR FILE
-    live2dlog.info("Writing out new star file for combined stacks.")
+    live2dlog.info(f"Writing out new base star file for combined stacks at {stack_label}.star.")
     with open(os.path.join(working_directory, "{}.star".format(stack_label)), "w") as file:
         file.write(" \ndata_\n \nloop_\n")
         input = ["{} #{}".format(value, index+1) for index, value in enumerate([
@@ -501,6 +502,7 @@ def merge_2d_subjob(cycle, working_directory, process_count=32):
         cycle (int): Iteration number for finding the partial classes and writing out the result.
         process_count (int): Number of processes used for parallelizing the ``refine2d`` job.
     """
+    live2dlog = logging.getLogger("live_2d")
     input = "\n".join([
         os.path.join(working_directory, "cycle_{0}.mrc".format(cycle+1)),
         os.path.join(working_directory, "dump_file_.dat"),
@@ -558,11 +560,8 @@ def append_new_particles(old_particles, new_particles, output_filename):
     Returns:
         int: Total number of particles in new star file.
     """
-    live2dlog = logging.getLogger("live_2d")
-
     with open(output_filename, 'w') as append_file:
         old_header_length = 0
-        live2dlog.info(old_particles)
         with open(old_particles) as f:
             for i, l in enumerate(f):
                 append_file.write(l)
@@ -577,7 +576,8 @@ def append_new_particles(old_particles, new_particles, output_filename):
                     new_header_length += 1
                     continue
                 if i == new_header_length + old_particle_count:
-                    live2dlog.info(i)
+                    # live2dlog.info(i)
+                    pass
                 if i > new_header_length + old_particle_count:
                     append_file.write(l)
                     new_particles_count += 1
@@ -619,7 +619,7 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
     elif previous_classes_bool:
         live2dlog.info("It looks like previous jobs have been run in this directory. The most recent output star file is: {}.star".format(recent_class))
         new_star_file = os.path.join(working_directory, "{}_appended.star".format(recent_class))
-        live2dlog.info("Instead of cycle_0.star, the new particle information will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
+        live2dlog.info("The new particle information will be appended to the end of that star file and saved as {}".format("{}_appended.star".format(recent_class)))
         total_particles = append_new_particles(old_particles=os.path.join(working_directory, "{}.star".format(recent_class)), new_particles=star_file, output_filename=new_star_file)
         live2dlog.info(f"Total particles in new cycle: {total_particles}")
     else:
@@ -630,12 +630,4 @@ def generate_star_file(stack_label, working_directory, previous_classes_bool=Fal
 
 
 if __name__ == "__main__":
-    live2dlog = logging.getLogger("live_2d")
-    live2dlog.info("This is a function library and should not be called directly.")
-    import_new_particles("combined_stack_test.mrcs", "/gne/data/cryoem/DATA_COLLECTIONS/WARP/190730_Proteasome_Krios_grid_001803_session_000794/", "allparticles_GenentechNet2Mask_20190730.star", "/gne/data/cryoem/DATA_COLLECTIONS/WARP/190730_Proteasome_Krios_grid_001803_session_000794/classification", new_net=True)
-    # live2dlog.info("Testing particle import with streaming")
-    # stack_label="streaming_combine"
-    # warp_folder = "/local/scratch/krios/Warp_Transfers/TestData"
-    # warp_star_filename = "allparticles_GenentechNet2Mask_20190627.star"
-    # working_directory = "/gne/scratch/u/baradb/outputdata"
-    # import_new_particles(stack_label, warp_folder, warp_star_filename, working_directory)
+    print("This is a function library and should not be called directly.")
