@@ -90,7 +90,7 @@ class SocketHandler(WebSocketHandler):
         """Adds new client to a global clients set when socket is opened."""
         # message_data = initialize_data()
         clients.add(self)
-        print("Socket Opened from {}".format(self.request.remote_ip))
+        live2dlog.debug("Socket Opened from {}".format(self.request.remote_ip))
 
     async def on_message(self, message):
         """
@@ -107,7 +107,6 @@ class SocketHandler(WebSocketHandler):
         return_data = "Dummy Return"
         if type == 'start_job':
             # Lots of server-side validation that is mirrored client-side.
-            print(config["job_status"])
             if config['job_status'] == "running":
                 return_data = {"type": "alert", "data": "You tried to run a job when a job is already running"}
                 await self.write_message(return_data)
@@ -159,11 +158,11 @@ class SocketHandler(WebSocketHandler):
                 message = {}
                 message["type"] = "settings_update"
                 message["settings"] = await generate_settings_message(config)
-                print(message)
+                live2dlog.debug(message)
                 await message_all_clients(message)
 
         elif type == 'get_gallery':
-            print(data)
+            live2dlog.debug(data)
             return_data = await get_new_gallery(config, data)
             await self.write_message(return_data)
         elif type == 'initialize':
@@ -171,19 +170,19 @@ class SocketHandler(WebSocketHandler):
             await self.write_message(return_data)
             pass
         elif type == 'change_directory':
-            print(data)
+            live2dlog.debug(data)
             if data is None:
                 return
             if options.warp_suffix:
                 new_warp_folder = os.path.join(options.warp_prefix, data, options.warp_suffix)
             else:
                 new_warp_folder = os.path.join(options.warp_prefix, data)
-            print(new_warp_folder)
+            live2dlog.debug(new_warp_folder)
             if options.live2d_suffix:
                 new_working_folder = os.path.join(options.live2d_prefix, data, options.live2d_suffix)
             else:
                 new_working_folder = os.path.join(options.live2d_prefix, data)
-            print(new_working_folder)
+            live2dlog.debug(new_working_folder)
             config_accepted = change_warp_directory(new_warp_folder, new_working_folder, config)
             live2dlog.debug(f"Trying to change to folder {data}")
             if not config_accepted:
@@ -205,14 +204,14 @@ class SocketHandler(WebSocketHandler):
                 return_data = {"type": "alert", "data": "You can't update settings with jobs running or waiting to kill."}
                 await self.write_message(return_data)
         else:
-            print(message)
+            live2dlog.debug(message)
             await self.write_message({"type": "alert", "data": "The backend doesn't understand that message"})
             pass
 
     def on_close(self):
         """Remove sockets from the clients list to minimize errors."""
         clients.remove(self)
-        print("Socket Closed from {}".format(self.request.remote_ip))
+        live2dlog.debug("Socket Closed from {}".format(self.request.remote_ip))
 
 
 class IndexHandler(RequestHandler):
@@ -248,13 +247,13 @@ async def listen_for_particles(config, clients):
         config (dict): the global config object
         clients (dict): dictionary of :py:class:`SocketHandler` instances that are open, to which the log will be sent.
     """
-    print("Listening for Particles?")
+    live2dlog.debug("Listening for Particles?")
     if not config["job_status"] == "listening":
-        print("not set to listening")
+        live2dlog.debug("not set to listening")
         config["counting"] = False
         return
     if config["counting"]:
-        print("listen job hasn't returned yet...")
+        live2dlog.debug("listen job hasn't returned yet...")
         return
     config["counting"] = True
     if config["cycles"]:
@@ -267,7 +266,6 @@ async def listen_for_particles(config, clients):
         warp_stack_filename = os.path.join(config["warp_folder"], "allparticles_{}.star".format(config["settings"]["neural_net"]))
         new_particle_count = await processing_functions.particle_count_difference(warp_stack_filename, current_particle_count)
         live2dlog.info(f"New Particles Detected: {new_particle_count}")
-        print(new_particle_count)
         if new_particle_count >= particle_count_to_fire:
             live2dlog.info(f"Job triggering automatically as {new_particle_count} particles have been added by Warp since last import.")
             config["job_status"] = "running"
@@ -418,7 +416,7 @@ async def execute_job_loop(config):
         live2dlog.info("2D class refinement at final resolution with all particles")
         live2dlog.info("==========================================================")
         live2dlog.info("All {} particles will be classified into {} classes at resolution {}Å".format(particle_count, config["settings"]["class_number"], config["settings"]["high_res_final"]))
-        live2dlog.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process, config["process_count"]))
+        live2dlog.info("{0} particles per process will be classified by {1} processes.".format(particles_per_process, process_count))
         for cycle_number in range(refinement_cycle_count):
             if config["kill_job"]:
                 live2dlog.info("Job Killed - Cycle Skipped")
@@ -427,18 +425,18 @@ async def execute_job_loop(config):
             live2dlog.info("Sending a new classification job out for processing")
             live2dlog.info("===================================================")
             low_res_limit = 300
-            high_res_limit = int(config["settings"]["high_res_final"])
+            high_res_limit = float(config["settings"]["high_res_final"])
             filename_number = cycle_number + start_cycle_number
             live2dlog.info("High Res Limit: {0}".format(high_res_limit))
             live2dlog.info("Fraction of Particles: {0:.2}".format(class_fraction))
             live2dlog.info(f"Number of Particles: {particle_count}")
             live2dlog.info(f"Dispatching job at {datetime.datetime.now()}")
-            pool = multiprocessing.Pool(processes=int(config["process_count"]))
+            pool = multiprocessing.Pool(processes=int(process_count))
             refine_job = partial(processing_functions.refine_2d_subjob, round=filename_number, input_star_filename=new_star_file, input_stack="{}.mrcs".format(stack_label), particles_per_process=particles_per_process, mask_radius=config["settings"]["mask_radius"], low_res_limit=low_res_limit, high_res_limit=high_res_limit, class_fraction=class_fraction, particle_count=particle_count, pixel_size=float(config["settings"]["pixel_size"]), angular_search_step=15, max_search_range=49.5, process_count=process_count, working_directory=config["working_directory"], automask=config["settings"]["automask"], autocenter=config["settings"]["autocenter"])
             results_list = await loop.run_in_executor(executor2, pool.map, refine_job, range(process_count))
             pool.close()
             live2dlog.info(results_list[30].decode('utf-8'))
-            await loop.run_in_executor(executor, partial(processing_functions.merge_2d_subjob, filename_number, config["working_directory"], process_count=int(config["process_count"])))
+            await loop.run_in_executor(executor, partial(processing_functions.merge_2d_subjob, filename_number, config["working_directory"], process_count=int(process_count)))
             await loop.run_in_executor(executor, processing_functions.make_photos, "cycle_{}".format(filename_number+1), config["working_directory"])
             new_star_file = await loop.run_in_executor(executor, partial(processing_functions.merge_star_files, filename_number, process_count=process_count, working_directory=config["working_directory"]))
             classified_count_per_class = await loop.run_in_executor(executor, processing_functions.count_particles_per_class, new_star_file)

@@ -1,5 +1,5 @@
 recursive-include live2d/static *
 recursive-include live2d/static/favicon *
-include live2d/latest_run.json
+include live2d/latest_run.json.template
 recursive-include live2d *.html
 include live2d/server_settings.conf

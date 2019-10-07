@@ -51,7 +51,7 @@ def initialize_logger(config):
     # c_handler.setLevel(logging.DEBUG)
 
     filename = os.path.join(config["working_directory"], config["logfile"])
-    print(filename)
+    live2dlog.debug(filename)
     f_handler = logging.FileHandler(filename, mode='a')
     f_format = logging.Formatter('%(message)s')
     f_handler.setFormatter(f_format)
@@ -59,7 +59,7 @@ def initialize_logger(config):
 
     # live2dlog.addHandler(c_handler)
     live2dlog.addHandler(f_handler)
-    print(live2dlog)
+    live2dlog.debug(live2dlog)
 
     return live2dlog
 
@@ -86,7 +86,7 @@ def load_config(filename):
     """
     with open(filename) as configfile:
         config = json.load(configfile)
-    # print_config(config)
+    print_config(config)
     return config
 
 
