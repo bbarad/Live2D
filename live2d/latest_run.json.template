@@ -1,6 +1,6 @@
 {"warp_folder": "/tmp",
   "working_directory": "/tmp",
-  "logfile": "logfile.txt",
+  "logfile": null,
   "settings": {
       "neural_net": "BoxNetOfSomeSort",
       "box_size": "100",

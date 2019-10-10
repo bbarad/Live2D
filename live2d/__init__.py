@@ -232,6 +232,8 @@ async def tail_log(config, clients=None, line_count=1000):
         config (dict): the global config object
         clients (dict): dictionary of websockethandler instances that are open, to which the log will be sent.
         line_count (int): number of lines to tail."""
+    if not config["logfile"]:
+        return
     logfile = os.path.join(config["working_directory"], config["logfile"])
     out = await asyncio.create_subprocess_shell("/usr/bin/tail -n {} {}".format(line_count, logfile), shell=True, stdout=asyncio.subprocess.PIPE)
     stdout, _ = await out.communicate()

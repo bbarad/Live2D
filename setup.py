@@ -20,7 +20,7 @@
 
 After installation, run the application with ``live2d``. Server configurations and latest run data can be found in ``~/.live2d/`` (or ``%USERPROFILE%\.live2d\`` in windows land).
 
-This live2d version is built against warp 1.0.7b3 and cisTEM 2 r1132. Changes to the interfaces of either app may require updating Live2D.
+This live2d version is built against warp 1.0.7 and cisTEM 2 r1145. Changes to the interfaces of either app may require updating Live2D.
 """
 
 from setuptools import setup, find_packages
@@ -39,7 +39,7 @@ requires = [
 
 setup(
     name="live2d",
-    version="1.0.1",
+    version="1.0.2",
     description="Web-interface (tornado driven) for on-the-fly 2d classification of single particle electron microscopy data using warp and cisTEM",
     author="Benjamin Barad",
     author_email="benjamin.barad@gmail.com",

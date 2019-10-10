@@ -2,8 +2,8 @@
 The Live2D tool is a lightweight python-based application to do semi-automated 2D
 classification of cryoEM particles simultaneously with data collection. It operates using a simple web interface for the frontend and uses Warp and cisTEM 2 on the backend.
 
-Author: **Benjamin Barad** _<baradb@gene.com>_/_<benjamin.barad@gmail.com>_  
-Date Modified: _2019-09-19_
+Author: **Benjamin Barad** _<benjamin.barad@gmail.com>_/ _<baradb@gene.com>_
+Date Modified: _2019-10-10_
 
 ## Getting Started
 These instructions will get Live2D functioning on your local machine. It is recommended to install one copy per microscope onto separate workstations - it is a CPU-heavy multi-process application and is currently tested for linux only (but should in theory work for windows). Performance scales well up to 32 cores tested.
@@ -22,7 +22,8 @@ Edit your `.bashrc` or `.zshrc` to ensure that the default shell has `refine2d` 
 
 ```bash
 git clone https://github.com/bbarad/Live2D
-pip install ./Live2D
+cd Live2D
+pip install .
 ```
 
 ### Configuration

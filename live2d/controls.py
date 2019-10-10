@@ -49,16 +49,15 @@ def initialize_logger(config):
     # c_format=logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     # c_handler.setFormatter(c_format)
     # c_handler.setLevel(logging.DEBUG)
-
-    filename = os.path.join(config["working_directory"], config["logfile"])
-    live2dlog.debug(filename)
-    f_handler = logging.FileHandler(filename, mode='a')
-    f_format = logging.Formatter('%(message)s')
-    f_handler.setFormatter(f_format)
-    f_handler.setLevel(logging.INFO)
-
+    if config["logfile"]:
+        filename = os.path.join(config["working_directory"], config["logfile"])
+        live2dlog.debug(filename)
+        f_handler = logging.FileHandler(filename, mode='a')
+        f_format = logging.Formatter('%(message)s')
+        f_handler.setFormatter(f_format)
+        f_handler.setLevel(logging.INFO)
+        live2dlog.addHandler(f_handler)
     # live2dlog.addHandler(c_handler)
-    live2dlog.addHandler(f_handler)
     live2dlog.debug(live2dlog)
 
     return live2dlog
