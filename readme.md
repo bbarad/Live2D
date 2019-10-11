@@ -2,8 +2,8 @@
 The Live2D tool is a lightweight python-based application to do semi-automated 2D
 classification of cryoEM particles simultaneously with data collection. It operates using a simple web interface for the frontend and uses Warp and cisTEM 2 on the backend.
 
-Author: **Benjamin Barad** _<benjamin.barad@gmail.com>_/ _<baradb@gene.com>_
-Date Modified: _2019-10-10_
+Author: **Benjamin Barad** _<benjamin.barad@gmail.com>_/ _<baradb@gene.com>_  
+Date Modified: _2019-10-11_  
 
 ## Getting Started
 These instructions will get Live2D functioning on your local machine. It is recommended to install one copy per microscope onto separate workstations - it is a CPU-heavy multi-process application and is currently tested for linux only (but should in theory work for windows). Performance scales well up to 32 cores tested.
@@ -24,6 +24,13 @@ Edit your `.bashrc` or `.zshrc` to ensure that the default shell has `refine2d` 
 git clone https://github.com/bbarad/Live2D
 cd Live2D
 pip install .
+```
+
+Building documentation (optional):
+```bash
+cd docs
+pip install mock
+make html
 ```
 
 ### Configuration
@@ -132,7 +139,7 @@ When this happens, the easiest thing to do is generally to kill the server proce
 3. Check that the server account's path has `refine2d` and `merge2d` from cisTEM in it - generally, if `cisTEM` is in your path, they will be too.
 4. Try pulling the latest version of the github repository - occasionally, something changes in `refine2d` or `merge2d`, and the inputs sent by live2d need to be changed accordingly. Generally we will stay on top of this, and you can get the fix quickly.
 5. It is possible for the particle stack to become irreversibly corrupted. Fix this by setting `next_run_new_particles` to `true` in `$HOME/.live2d/latest_run.json` and restarting the server.
-5. Open an issue on Roche Stash or Github. You may have found a novel bug.
+6. Open an issue on Roche Stash or Github. You may have found a novel bug.
 
 
 ------------------------------
