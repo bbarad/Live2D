@@ -39,11 +39,11 @@ requires = [
 
 setup(
     name="live2d",
-    version="1.0.2",
+    version="1.0.3",
     description="Web-interface (tornado driven) for on-the-fly 2d classification of single particle electron microscopy data using warp and cisTEM",
     author="Benjamin Barad",
     author_email="benjamin.barad@gmail.com",
-    keywords="cryoem warp cistem tornado ",
+    keywords="cryoem warp cistem tornado 3dem spa microscopy",
     packages=find_packages(),
     install_requires=requires,
     python_requires=">=3.7",
