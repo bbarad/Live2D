@@ -30,6 +30,7 @@ Author: Benjamin Barad <benjamin.barad@gmail.com>/<baradb@gene.com>
 
 import asyncio
 import errno
+import io
 import logging
 from math import ceil
 import os
@@ -97,29 +98,46 @@ def count_particles_per_class(star_filename):
     return class_counter_list
 
 
-def load_star_as_dataframe(star_filename):
+def load_star_as_dataframe(star_filename, retry_count = 5):
     """Generate a pandas dataframe from a star file with one single data loop.
     Written for high efficiency. Star headers have the leading _ stripped and are turned into the pandas header.
     Extra comment lines after the header loop_ are currently unsupported and should be removed. before loading.
 
     Args:
-        star_filename (str): Filename of the star file from Warp (relion style)
+        star_filename (str): Filename of the star file from Warp (relion style).
+        retry_count (int): How many times to retry in case of stale file errors.
     Return:
         :py:class:`pandas.Dataframe`: Pandas dataframe from the star file.
     """
-    with open(star_filename) as f:
-        pos = 0
-        columns = []
-        cur_line = f.readline()
-        while not cur_line.startswith("loop_"):
-            cur_line = f.readline()
-        cur_line = f.readline()
-        while cur_line.startswith("_"):
-            pos = f.tell()
-            columns.append(cur_line.split()[0][1:])
-            cur_line = f.readline()
-        f.seek(pos)
-        df = pandas.read_csv(f, delim_whitespace=True, names=columns)
+    live2dlog = logging.getLogger("live_2d")
+    i = 0
+    data = None
+    # Load into memory all at once to avoid stale file errors. Requires serious memory availability.
+    while (i<retry_count):
+        try:
+            with open(star_filename) as f:
+                data=io.StringIO(f.read())
+                break
+        except OSError as err:
+            i = i+1
+            live2dlog.warn("Star read failed with error: {}".format(err))
+            live2dlog.warn("Attempt Number {} of {}".format(i, retry_count))
+            time.sleep(2)
+    if not data:
+        raise IOError("Failed to read starfile after {} retries".format(retry_count))
+    pos = 0
+    columns = []
+    cur_line = data.readline()
+    while not cur_line.startswith("loop_"):
+        cur_line = data.readline()
+    cur_line = data.readline()
+    while cur_line.startswith("_"):
+        pos = data.tell()
+        columns.append(cur_line.split()[0][1:])
+        cur_line = data.readline()
+    data.seek(pos)
+    df = pandas.read_csv(data, delim_whitespace=True, names=columns)
+    data.close()
     return df
 
 
