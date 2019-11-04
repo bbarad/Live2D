@@ -338,7 +338,7 @@ def import_new_particles(stack_label, warp_folder, warp_star_filename, working_d
             file.write("\n")
     # os.chdir(starting_directory)
     end_time = time.time()
-    live2dlog.info("Total Time To Import New Particles: {}s".format(end_time - start_time))
+    live2dlog.info("Total Time To Import New Particles: {:.1}s".format(end_time - start_time))
     return len(total_particles)
 
 
