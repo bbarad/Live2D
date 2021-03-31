@@ -2,7 +2,9 @@
 ![Live2D Layout Photo](static/Example_photo.png)
 The Live2D tool is a lightweight python-based application to do semi-automated 2D
 classification of cryoEM particles simultaneously with data collection. It operates using a simple web interface for the frontend and uses Warp and cisTEM 2 on the backend.
+
 Author: **Benjamin Barad** _<benjamin.barad@gmail.com>_
+
 Date Modified: _2021-3-30_  
 
 ## Getting Started
